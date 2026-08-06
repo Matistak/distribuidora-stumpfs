@@ -12,8 +12,8 @@ export function UploadPanel({
   filas,
 }: {
   onDatos: (rows: VentaRow[], nombre: string) => void;
-  archivo?: string;
-  filas?: number;
+  archivo?: string | undefined;
+  filas?: number | undefined;
 }) {
   const [cargando, setCargando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

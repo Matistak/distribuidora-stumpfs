@@ -242,7 +242,7 @@ function FiltroSelect({
   onChange,
 }: {
   placeholder: string;
-  valor?: string;
+  valor?: string | undefined;
   opciones: string[];
   onChange: (v: string) => void;
 }) {
