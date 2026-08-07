@@ -20,16 +20,16 @@ ejecutar las métricas en SQL, no de cargar todos los registros en el navegador.
 
 ## Tecnologías elegidas
 
-| Necesidad          | Tecnología                                   |
-| ------------------ | -------------------------------------------- |
-| Aplicación         | Tauri 2                                      |
-| Frontend           | React + TypeScript                           |
-| API local          | Fastify 5 + TypeScript                       |
-| Lectura de Excel   | `xlsx`                                       |
-| Base de datos      | SQLite                                       |
-| ORM                | Prisma                                       |
-| Comunicación       | HTTP en `127.0.0.1:3001` mediante sidecar   |
-| Persistencia       | Directorio de datos de la aplicación         |
+| Necesidad        | Tecnología                                |
+| ---------------- | ----------------------------------------- |
+| Aplicación       | Tauri 2                                   |
+| Frontend         | React + TypeScript                        |
+| API local        | Fastify 5 + TypeScript                    |
+| Lectura de Excel | `xlsx`                                    |
+| Base de datos    | SQLite                                    |
+| ORM              | Prisma                                    |
+| Comunicación     | HTTP en `127.0.0.1:3001` mediante sidecar |
+| Persistencia     | Directorio de datos de la aplicación      |
 
 No se necesitan PostgreSQL, S3, colas de trabajo ni autenticación remota para
 la primera versión local. Se evaluarían si la aplicación pasa a ser
@@ -70,15 +70,15 @@ permanecer allí y debe incluir backups y restauración.
 
 ## Endpoints
 
-| Método | Ruta               | Descripción |
-| ------ | ------------------ | ----------- |
-| POST   | `/api/uploads`     | Recibe `multipart/form-data` con `file`, valida y procesa el Excel. |
-| GET    | `/api/uploads`     | Historial de cargas. |
-| GET    | `/api/uploads/:id` | Detalle y estado de una carga. |
-| GET    | `/api/dashboard`   | KPIs, series y rankings. Query: `desde`, `hasta`, `vendedor`, `canal`, `ciudad`, `zona`. |
-| GET    | `/api/filtros`     | Valores disponibles para vendedor, canal, ciudad y zona. |
-| GET    | `/api/ventas`      | Filas paginadas. Query: `page`, `pageSize`, `vendedor`, `canal`, `ciudad`, `zona`. |
-| GET    | `/health`          | Verifica que el sidecar esté disponible. |
+| Método | Ruta               | Descripción                                                                                          |
+| ------ | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| POST   | `/api/uploads`     | Recibe `multipart/form-data` con `file`, valida y procesa el Excel.                                  |
+| GET    | `/api/uploads`     | Historial de cargas.                                                                                 |
+| GET    | `/api/uploads/:id` | Detalle y estado de una carga.                                                                       |
+| GET    | `/api/dashboard`   | KPIs, series y rankings. Query: `desde`, `hasta`, `vendedor`, `canal`, `ciudad`, `zona`.             |
+| GET    | `/api/filtros`     | Valores disponibles para vendedor, canal, ciudad y zona.                                             |
+| GET    | `/api/ventas`      | Filas paginadas. Query: `page`, `pageSize`, `desde`, `hasta`, `vendedor`, `canal`, `ciudad`, `zona`. |
+| GET    | `/health`          | Verifica que el sidecar esté disponible.                                                             |
 
 ### Respuesta de una carga
 
@@ -106,6 +106,8 @@ mantenerse alineados con los tipos del backend en
 - La clave única actual es (`nroDoc`, `codProducto`, `nroComprobante`). Debe
   validarse con los datos reales para confirmar que no faltan compañía,
   distribuidora o tipo de documento.
+- `nroComprobante` se almacena como `BigInt` porque los comprobantes pueden
+  superar el rango de un `Int` de Prisma. La API lo serializa como `number`.
 - La deduplicación no debe cargar todas las claves de la tabla en memoria antes
   de cada importación.
 - Los importes monetarios no deberían depender de `Float`; conviene utilizar

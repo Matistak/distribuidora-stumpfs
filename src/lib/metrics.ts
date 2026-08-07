@@ -9,11 +9,7 @@ import type {
 
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
-function ranking(
-  rows: VentaRow[],
-  key: (r: VentaRow) => string,
-  limit = 10,
-): RankingItem[] {
+function ranking(rows: VentaRow[], key: (r: VentaRow) => string, limit = 10): RankingItem[] {
   const map = new Map<string, number>();
   for (const r of rows) map.set(key(r), (map.get(key(r)) ?? 0) + r.montoVtaNetaGua);
   const total = sum([...map.values()]) || 1;
@@ -26,6 +22,8 @@ function ranking(
 export function aplicarFiltros(rows: VentaRow[], f: Filtros): VentaRow[] {
   return rows.filter(
     (r) =>
+      (!f.desde || r.fecha >= f.desde) &&
+      (!f.hasta || r.fecha <= f.hasta) &&
       (!f.vendedor || r.vendedor === f.vendedor) &&
       (!f.canal || r.canal === f.canal) &&
       (!f.ciudad || r.ciudad === f.ciudad) &&
@@ -55,9 +53,7 @@ export function calcularDashboard(rows: VentaRow[]): DashboardData {
   const ventaBruta = sum(rows.map((r) => r.montoIvaBrutaGua));
   const costo = sum(rows.map((r) => r.costoVtaGua));
   const unidades = sum(rows.map((r) => r.vtaUnit));
-  const notas = new Set(
-    rows.filter((r) => /CREDITO/i.test(r.tipoDoc)).map((r) => r.nroDoc),
-  );
+  const notas = new Set(rows.filter((r) => /CREDITO/i.test(r.tipoDoc)).map((r) => r.nroDoc));
 
   const porDia = new Map<number, number>();
   for (const r of rows) porDia.set(r.dia, (porDia.get(r.dia) ?? 0) + r.montoVtaNetaGua);
@@ -65,7 +61,10 @@ export function calcularDashboard(rows: VentaRow[]): DashboardData {
     .sort((a, b) => a[0] - b[0])
     .map(([dia, valor]) => ({ label: String(dia), valor }));
 
-  const fechas = rows.map((r) => r.fecha).filter(Boolean).sort();
+  const fechas = rows
+    .map((r) => r.fecha)
+    .filter(Boolean)
+    .sort();
 
   return {
     kpis: {

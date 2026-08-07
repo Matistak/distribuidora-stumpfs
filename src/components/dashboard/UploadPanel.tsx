@@ -2,16 +2,18 @@ import { useRef, useState } from "react";
 import { FileSpreadsheet, Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { backendConectado, subirExcel } from "@/lib/api";
+import { backendConectado, subirExcel, type UploadResponse } from "@/lib/api";
 import { parseExcel } from "@/lib/excel";
 import type { VentaRow } from "@/lib/types";
 
 export function UploadPanel({
   onDatos,
+  onCarga,
   archivo,
   filas,
 }: {
-  onDatos: (rows: VentaRow[], nombre: string) => void;
+  onDatos?: (rows: VentaRow[], nombre: string) => void;
+  onCarga?: (carga: UploadResponse) => void | Promise<void>;
   archivo?: string | undefined;
   filas?: number | undefined;
 }) {
@@ -21,15 +23,16 @@ export function UploadPanel({
   async function procesar(file: File) {
     setCargando(true);
     try {
-      // Cuando el backend este disponible se envia el archivo tambien al servidor.
       if (backendConectado()) {
-        await subirExcel(file).catch((e: Error) => {
-          toast.error("El backend rechazó el archivo", { description: e.message });
-        });
+        const carga = await subirExcel(file);
+        await onCarga?.(carga);
+        toast.success(`${carga.filasNuevas.toLocaleString("es-PY")} filas nuevas procesadas`);
+        return;
       }
+
       const rows = await parseExcel(file);
       if (!rows.length) throw new Error("El archivo no contiene filas");
-      onDatos(rows, file.name);
+      onDatos?.(rows, file.name);
       toast.success(`${rows.length.toLocaleString("es-PY")} filas procesadas`);
     } catch (e) {
       toast.error("No se pudo leer el Excel", { description: (e as Error).message });
@@ -46,7 +49,7 @@ export function UploadPanel({
         const file = e.dataTransfer.files?.[0];
         if (file) void procesar(file);
       }}
-      className="rounded-xl border border-dashed border-border bg-card p-4 text-center shadow-card"
+      className="self-start rounded-xl border border-dashed border-border bg-card p-4 text-center shadow-card"
     >
       <input
         ref={inputRef}

@@ -42,8 +42,14 @@ export function KpiCard({
           <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
             {titulo}
           </p>
-          <p className="mt-1 truncate text-xl font-bold text-foreground">{valor}</p>
-          {detalle ? <p className="mt-0.5 text-xs text-muted-foreground">{detalle}</p> : null}
+          <p className="mt-1 break-words text-lg font-bold leading-tight text-foreground sm:text-xl">
+            {valor}
+          </p>
+          {detalle ? (
+            <p className="mt-0.5 break-words text-xs leading-tight text-muted-foreground">
+              {detalle}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

@@ -12,6 +12,15 @@ Volumen de referencia:
 - 300.000 filas por año.
 - 1.500.000 filas en cinco años.
 
+## Responsabilidad de las pruebas
+
+Las pruebas con archivos Excel reales, datos históricos, volumen acumulado,
+backups, restauración, reinicios e instalación las realizará el usuario.
+
+El desarrollo debe preparar la funcionalidad, los comandos y los criterios de
+verificación. El usuario ejecutará las pruebas en su entorno y reportará los
+resultados o errores encontrados.
+
 ## Estado actual
 
 - [x] Esquema Prisma con SQLite.
@@ -22,7 +31,7 @@ Volumen de referencia:
 - [x] Tauri configurado para iniciar el backend como sidecar.
 - [x] Copia de la base semilla al directorio de datos de la aplicación.
 - [x] Documentación alineada con SQLite + Tauri.
-- [ ] Frontend utilizando la base como fuente de verdad.
+- [x] Frontend utilizando la base como fuente de verdad.
 - [ ] Importación validada e idempotente para datos reales.
 - [ ] Backups y restauración.
 - [ ] Pruebas con el volumen esperado.
@@ -32,15 +41,17 @@ Volumen de referencia:
 
 Prioridad: alta.
 
-- [ ] Cargar `GET /api/dashboard` al iniciar la aplicación.
-- [ ] Cargar `GET /api/filtros` al iniciar la aplicación.
-- [ ] Después de una carga exitosa, refrescar dashboard y filtros desde la API.
-- [ ] Usar `GET /api/ventas` solo para tablas paginadas.
-- [ ] Dejar `parseExcel` únicamente como fallback explícito de modo local.
-- [ ] Eliminar el estado global de todas las filas cuando el backend esté conectado.
-- [ ] Hacer que un error de `/api/uploads` detenga el flujo y no continúe con una carga local silenciosa.
-- [ ] Alinear `UploadResponse` y `UploadHistorial` entre frontend y backend.
-- [ ] Agregar al frontend los filtros de fecha si se necesitan en el dashboard.
+Responsable de las pruebas con archivos reales: usuario.
+
+- [x] Cargar `GET /api/dashboard` al iniciar la aplicación.
+- [x] Cargar `GET /api/filtros` al iniciar la aplicación.
+- [x] Después de una carga exitosa, refrescar dashboard y filtros desde la API.
+- [x] Usar `GET /api/ventas` solo para tablas paginadas.
+- [x] Dejar `parseExcel` únicamente como fallback explícito de modo local.
+- [x] Eliminar el estado global de todas las filas cuando el backend esté conectado.
+- [x] Hacer que un error de `/api/uploads` detenga el flujo y no continúe con una carga local silenciosa.
+- [x] Alinear `UploadResponse` y `UploadHistorial` entre frontend y backend.
+- [x] Agregar al frontend los filtros de fecha del dashboard.
 
 Criterio de finalización: cerrar y volver a abrir la aplicación no debe borrar el
 dashboard; los datos deben provenir de SQLite mediante la API.
@@ -70,6 +81,7 @@ Prioridad: alta antes de acumular muchos meses.
 
 - [ ] Confirmar si los importes en guaraníes no tienen decimales.
 - [ ] Cambiar importes monetarios de `Float` a enteros o una representación decimal controlada.
+- [x] Cambiar `nroComprobante` a `BigInt` para soportar comprobantes mayores que `Int`.
 - [ ] Revisar el tipo de `vtaUnit`, descuentos, IVA, latitud y longitud por separado.
 - [ ] Confirmar cómo se identifican documentos de distintas compañías, sucursales y tipos.
 - [ ] Crear una migración de Prisma para los cambios del modelo.
@@ -81,6 +93,8 @@ sin errores de redondeo y la clave de idempotencia debe estar validada.
 ## Etapa 4: Rendimiento de SQLite
 
 Prioridad: media, después de tener datos reales.
+
+Responsable de las mediciones de rendimiento: usuario.
 
 - [ ] Activar `journal_mode = WAL`.
 - [ ] Configurar `busy_timeout`.
@@ -97,6 +111,8 @@ al menos 300.000 filas, sin devolver todas las ventas al navegador.
 
 Prioridad: alta antes del uso real.
 
+Responsable de probar backup y restauración: usuario.
+
 - [ ] Definir la ubicación de la base activa en el directorio de datos de Tauri.
 - [ ] Agregar backup manual desde la aplicación.
 - [ ] Crear backup automático antes de una importación.
@@ -111,6 +127,8 @@ backup y recuperar el dashboard completo.
 ## Etapa 6: Pruebas de volumen
 
 Prioridad: media.
+
+Responsable de ejecutar las pruebas de volumen: usuario.
 
 - [ ] Probar una carga real de 25.000 filas.
 - [ ] Acumular o generar 300.000 filas y medir importación y dashboard.
@@ -128,6 +146,9 @@ planificado.
 ## Etapa 7: Empaquetado Tauri
 
 Prioridad: media, después de completar las etapas anteriores.
+
+Responsable de validar el instalador y la persistencia entre actualizaciones:
+usuario.
 
 - [ ] Generar el sidecar con `node scripts/setup-sidecar.js`.
 - [ ] Verificar que el sidecar encuentre el engine de Prisma.

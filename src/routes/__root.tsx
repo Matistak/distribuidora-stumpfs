@@ -1,11 +1,22 @@
-import {
-  Outlet,
-  Link,
-  createRootRoute,
-  useRouter,
-} from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, useRouter, useRouterState } from "@tanstack/react-router";
+import { BarChart3, ClipboardList, Truck, type LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -75,5 +86,87 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <div className="flex min-h-svh flex-col">
+          <div className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
+            <SidebarTrigger />
+            <span className="text-sm font-semibold">Distribuidora Stumpfs</span>
+          </div>
+          <Outlet />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+function AppSidebar() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className="flex items-center gap-3 px-2 py-3">
+          <span
+            className="grid size-10 shrink-0 place-items-center rounded-lg text-primary-foreground"
+            style={{ backgroundImage: "var(--gradient-brand)" }}
+          >
+            <Truck className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold">Distribuidora</p>
+            <p className="truncate text-xs text-sidebar-foreground/65">Stumpfs</p>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Menú principal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarNavItem to="/" label="Dashboard" icon={BarChart3} active={pathname === "/"} />
+              <SidebarNavItem
+                to="/ventas"
+                label="Ventas"
+                icon={ClipboardList}
+                active={pathname.startsWith("/ventas")}
+              />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <div className="mt-auto border-t border-sidebar-border p-4 text-xs text-sidebar-foreground/60">
+        Panel comercial
+      </div>
+    </Sidebar>
+  );
+}
+
+function SidebarNavItem({
+  to,
+  label,
+  icon: Icon,
+  active,
+}: {
+  to: "/" | "/ventas";
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+}) {
+  const { setOpenMobile } = useSidebar();
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={active} tooltip={label}>
+        <Link to={to} onClick={() => setOpenMobile(false)}>
+          <Icon />
+          <span>{label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 }

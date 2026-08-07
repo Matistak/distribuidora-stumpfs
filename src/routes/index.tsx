@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   BarChart3,
   Boxes,
@@ -12,43 +13,108 @@ import {
   Wallet,
 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { KpiCard, Panel } from "@/components/dashboard/KpiCard";
+import { FiltroSelect } from "@/components/dashboard/FiltroSelect";
 import {
   DonaParticipacion,
   EvolucionDiaria,
   RankingBarras,
   TablaRanking,
 } from "@/components/dashboard/Charts";
+import { KpiCard, Panel } from "@/components/dashboard/KpiCard";
 import { UploadPanel } from "@/components/dashboard/UploadPanel";
-import { aplicarFiltros, calcularDashboard, fmtGs, fmtNum, fmtPct, opcionesFiltro } from "@/lib/metrics";
-import { backendConectado } from "@/lib/api";
-import type { Filtros, VentaRow } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import {
+  aplicarFiltros,
+  calcularDashboard,
+  fmtGs,
+  fmtNum,
+  fmtPct,
+  opcionesFiltro,
+} from "@/lib/metrics";
+import { backendConectado, obtenerDashboard, obtenerFiltros } from "@/lib/api";
+import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const TODOS = "__todos__";
+const OPCIONES_VACIAS: OpcionesFiltro = {
+  vendedores: [],
+  canales: [],
+  ciudades: [],
+  zonas: [],
+};
 
 function Dashboard() {
+  const backend = backendConectado();
   const [rows, setRows] = useState<VentaRow[]>([]);
   const [archivo, setArchivo] = useState<string>();
+  const [filasCargadas, setFilasCargadas] = useState<number>();
   const [filtros, setFiltros] = useState<Filtros>({});
+  const [dashboardBackend, setDashboardBackend] = useState<DashboardData | null>(null);
+  const [opcionesBackend, setOpcionesBackend] = useState<OpcionesFiltro>(OPCIONES_VACIAS);
+  const [cargandoBackend, setCargandoBackend] = useState(backend);
+  const [actualizacion, setActualizacion] = useState(0);
 
-  const opciones = useMemo(() => opcionesFiltro(rows), [rows]);
+  useEffect(() => {
+    if (!backend) return;
+
+    let activo = true;
+    setCargandoBackend(true);
+
+    obtenerDashboard(filtros)
+      .then((data) => {
+        if (activo) setDashboardBackend(data);
+      })
+      .catch((error: unknown) => {
+        if (activo) {
+          toast.error("No se pudo cargar el dashboard", {
+            description: error instanceof Error ? error.message : "Error de conexión",
+          });
+        }
+      })
+      .finally(() => {
+        if (activo) setCargandoBackend(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [backend, filtros, actualizacion]);
+
+  useEffect(() => {
+    if (!backend) return;
+
+    let activo = true;
+    obtenerFiltros()
+      .then((data) => {
+        if (activo) setOpcionesBackend(data);
+      })
+      .catch((error: unknown) => {
+        if (activo) {
+          toast.error("No se pudieron cargar los filtros", {
+            description: error instanceof Error ? error.message : "Error de conexión",
+          });
+        }
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [backend, actualizacion]);
+
+  const opcionesLocales = useMemo(() => opcionesFiltro(rows), [rows]);
   const filtradas = useMemo(() => aplicarFiltros(rows, filtros), [rows, filtros]);
-  const d = useMemo(() => calcularDashboard(filtradas), [filtradas]);
-  const hayDatos = rows.length > 0;
+  const dashboardLocal = useMemo(() => calcularDashboard(filtradas), [filtradas]);
+  const opciones = backend ? opcionesBackend : opcionesLocales;
+  const d = backend ? (dashboardBackend ?? dashboardLocal) : dashboardLocal;
+  const hayDatos = backend ? Boolean(dashboardBackend?.periodo.desde) : rows.length > 0;
 
-  const setFiltro = (k: keyof Filtros) => (v: string) =>
-    setFiltros((prev) => ({ ...prev, [k]: v === TODOS ? undefined : v }));
+  const setFiltro = (k: keyof Filtros) => (v: string | undefined) =>
+    setFiltros((prev) => ({ ...prev, [k]: v }));
+
+  const setFecha = (k: "desde" | "hasta") => (e: ChangeEvent<HTMLInputElement>) =>
+    setFiltros((prev) => ({ ...prev, [k]: e.target.value || undefined }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,13 +134,33 @@ function Dashboard() {
               <h1 className="text-lg font-bold tracking-tight">Tablero de Control Comercial</h1>
               <p className="text-xs text-muted-foreground">
                 {hayDatos
-                  ? `Período ${d.periodo.desde} → ${d.periodo.hasta} · ${fmtNum(filtradas.length)} líneas`
+                  ? `Período ${d?.periodo.desde} → ${d?.periodo.hasta}${backend ? "" : ` · ${fmtNum(filtradas.length)} líneas`}`
                   : "Visión general del negocio"}
               </p>
             </div>
           </div>
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Desde
+              <Input
+                type="date"
+                value={filtros.desde ?? ""}
+                onChange={setFecha("desde")}
+                className="h-9 w-[140px] text-xs"
+                aria-label="Fecha desde"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Hasta
+              <Input
+                type="date"
+                value={filtros.hasta ?? ""}
+                onChange={setFecha("hasta")}
+                className="h-9 w-[140px] text-xs"
+                aria-label="Fecha hasta"
+              />
+            </label>
             <FiltroSelect
               placeholder="Todos los vendedores"
               valor={filtros.vendedor}
@@ -93,89 +179,110 @@ function Dashboard() {
               opciones={opciones.ciudades}
               onChange={setFiltro("ciudad")}
             />
+            <FiltroSelect
+              placeholder="Todas las zonas"
+              valor={filtros.zona}
+              opciones={opciones.zonas}
+              onChange={setFiltro("zona")}
+            />
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                backendConectado()
-                  ? "bg-success/10 text-success"
-                  : "bg-warning/15 text-warning-foreground"
+                backend ? "bg-success/10 text-success" : "bg-warning/15 text-warning-foreground"
               }`}
             >
-              {backendConectado() ? "Backend conectado" : "Modo local (sin backend)"}
+              {backend
+                ? cargandoBackend
+                  ? "Cargando datos..."
+                  : "Backend conectado"
+                : "Modo local (sin backend)"}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5 lg:px-8">
-        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <KpiCard
-              titulo="Venta neta"
-              valor={fmtGs(d.kpis.ventaNeta)}
-              detalle={`Bruta: ${fmtGs(d.kpis.ventaBruta)}`}
-              icon={Wallet}
-            />
-            <KpiCard
-              titulo="Facturas"
-              valor={fmtNum(d.kpis.cantidadFacturas)}
-              detalle={`${fmtNum(d.kpis.notasCredito)} notas de crédito`}
-              icon={FileText}
-              tone="chart5"
-            />
-            <KpiCard
-              titulo="Ticket promedio"
-              valor={fmtGs(d.kpis.ticketPromedio)}
-              icon={Receipt}
-              tone="warning"
-            />
-            <KpiCard
-              titulo="Clientes activos"
-              valor={fmtNum(d.kpis.clientesActivos)}
-              icon={Users}
-              tone="success"
-            />
-            <KpiCard
-              titulo="Unidades vendidas"
-              valor={fmtNum(d.kpis.unidadesVendidas)}
-              icon={Boxes}
-              tone="chart6"
-            />
-            <KpiCard
-              titulo="Productos distintos"
-              valor={fmtNum(d.kpis.productosDistintos)}
-              icon={Layers}
-              tone="primary"
-            />
-            <KpiCard
-              titulo="Margen bruto"
-              valor={fmtPct(d.kpis.margenPorc)}
-              detalle="Sobre venta neta"
-              icon={Percent}
-              tone="success"
-            />
-            <KpiCard
-              titulo="Vendedores activos"
-              valor={fmtNum(opciones.vendedores.length)}
-              icon={BarChart3}
-              tone="destructive"
-            />
+      <main className="@container mx-auto max-w-[1600px] space-y-4 px-4 py-5 lg:px-8">
+        <div className="grid gap-4 @4xl:grid-cols-[1fr_320px]">
+          <div className="@container">
+            <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
+              <KpiCard
+                titulo="Venta neta"
+                valor={fmtGs(d.kpis.ventaNeta)}
+                detalle={`Bruta: ${fmtGs(d.kpis.ventaBruta)}`}
+                icon={Wallet}
+              />
+              <KpiCard
+                titulo="Facturas"
+                valor={fmtNum(d.kpis.cantidadFacturas)}
+                detalle={`${fmtNum(d.kpis.notasCredito)} notas de crédito`}
+                icon={FileText}
+                tone="chart5"
+              />
+              <KpiCard
+                titulo="Ticket promedio"
+                valor={fmtGs(d.kpis.ticketPromedio)}
+                icon={Receipt}
+                tone="warning"
+              />
+              <KpiCard
+                titulo="Clientes activos"
+                valor={fmtNum(d.kpis.clientesActivos)}
+                icon={Users}
+                tone="success"
+              />
+              <KpiCard
+                titulo="Unidades vendidas"
+                valor={fmtNum(d.kpis.unidadesVendidas)}
+                icon={Boxes}
+                tone="chart6"
+              />
+              <KpiCard
+                titulo="Productos distintos"
+                valor={fmtNum(d.kpis.productosDistintos)}
+                icon={Layers}
+                tone="primary"
+              />
+              <KpiCard
+                titulo="Margen bruto"
+                valor={fmtPct(d.kpis.margenPorc)}
+                detalle="Sobre venta neta"
+                icon={Percent}
+                tone="success"
+              />
+              <KpiCard
+                titulo="Vendedores activos"
+                valor={fmtNum(opciones.vendedores.length)}
+                icon={BarChart3}
+                tone="destructive"
+              />
+            </div>
           </div>
 
           <UploadPanel
-            onDatos={(r, nombre) => {
-              setRows(r);
-              setArchivo(nombre);
+            onDatos={
+              backend
+                ? undefined
+                : (r, nombre) => {
+                    setRows(r);
+                    setArchivo(nombre);
+                    setFilasCargadas(r.length);
+                    setFiltros({});
+                  }
+            }
+            onCarga={(carga) => {
+              setArchivo(carga.archivo);
+              setFilasCargadas(carga.filasTotales);
               setFiltros({});
+              setActualizacion((version) => version + 1);
             }}
             archivo={archivo}
-            filas={rows.length}
+            filas={filasCargadas}
           />
         </div>
 
-        {hayDatos ? (
+        {hayDatos && d ? (
           <>
-            <div className="grid gap-4 xl:grid-cols-3">
-              <Panel titulo="Evolución de ventas diarias" className="xl:col-span-2">
+            <div className="grid gap-4 @5xl:grid-cols-3">
+              <Panel titulo="Evolución de ventas diarias" className="@5xl:col-span-2">
                 <EvolucionDiaria data={d.ventasPorDia} />
               </Panel>
               <Panel titulo="Ventas por ciudad">
@@ -183,7 +290,7 @@ function Dashboard() {
               </Panel>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 @3xl:grid-cols-2">
               <Panel titulo="Ventas por vendedor (top 10)">
                 <RankingBarras data={d.ventasPorVendedor} />
               </Panel>
@@ -192,7 +299,7 @@ function Dashboard() {
               </Panel>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-3">
+            <div className="grid gap-4 @5xl:grid-cols-3">
               <Panel titulo="Ventas por canal">
                 <TablaRanking data={d.ventasPorCanal} etiqueta="Canal" />
               </Panel>
@@ -215,33 +322,5 @@ function Dashboard() {
         )}
       </main>
     </div>
-  );
-}
-
-function FiltroSelect({
-  placeholder,
-  valor,
-  opciones,
-  onChange,
-}: {
-  placeholder: string;
-  valor?: string | undefined;
-  opciones: string[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <Select value={valor ?? TODOS} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-[190px] text-xs">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="max-h-72">
-        <SelectItem value={TODOS}>{placeholder}</SelectItem>
-        {opciones.map((o) => (
-          <SelectItem key={o} value={o}>
-            {o}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }

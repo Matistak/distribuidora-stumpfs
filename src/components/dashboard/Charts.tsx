@@ -79,7 +79,7 @@ export function RankingBarras({ data, height = 300 }: { data: RankingItem[]; hei
         <YAxis
           type="category"
           dataKey="nombre"
-          width={140}
+          width={155}
           tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
         />
         <Tooltip
@@ -95,65 +95,67 @@ export function RankingBarras({ data, height = 300 }: { data: RankingItem[]; hei
 
 export function DonaParticipacion({ data }: { data: RankingItem[] }) {
   return (
-    <div className="flex flex-col items-center gap-3 sm:flex-row">
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="valor"
-            nameKey="nombre"
-            innerRadius={55}
-            outerRadius={85}
-            paddingAngle={2}
-          >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtGs(v)} />
-        </PieChart>
-      </ResponsiveContainer>
-      <ul className="w-full space-y-1.5 sm:w-44">
-        {data.map((d, i) => (
-          <li key={d.nombre} className="flex items-center gap-2 text-xs">
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: COLORS[i % COLORS.length] }}
-            />
-            <span className="truncate text-muted-foreground">{d.nombre}</span>
-            <span className="ml-auto font-semibold text-foreground">
-              {fmtPct(d.participacion)}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="@container min-w-0">
+      <div className="flex min-w-0 flex-col items-center gap-3 @md:flex-row">
+        <div className="w-full shrink-0 @md:w-[200px]">
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="valor"
+                nameKey="nombre"
+                innerRadius={55}
+                outerRadius={85}
+                paddingAngle={2}
+              >
+                {data.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => fmtGs(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <ul className="w-full min-w-0 flex-1 space-y-1.5">
+          {data.map((d, i) => (
+            <li key={d.nombre} className="flex items-start gap-2 text-xs">
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: COLORS[i % COLORS.length] }}
+              />
+              <span className="min-w-0 flex-1 break-words leading-tight text-muted-foreground">
+                {d.nombre}
+              </span>
+              <span className="shrink-0 whitespace-nowrap font-semibold text-foreground">
+                {fmtPct(d.participacion)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
 
-export function TablaRanking({
-  data,
-  etiqueta,
-}: {
-  data: RankingItem[];
-  etiqueta: string;
-}) {
+export function TablaRanking({ data, etiqueta }: { data: RankingItem[]; etiqueta: string }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[430px] table-fixed text-sm">
         <thead>
           <tr className="border-b border-border text-xs text-muted-foreground">
-            <th className="py-2 text-left font-semibold">{etiqueta}</th>
-            <th className="py-2 text-right font-semibold">Venta neta</th>
-            <th className="py-2 text-right font-semibold">Part.</th>
+            <th className="w-[45%] py-2 text-left font-semibold">{etiqueta}</th>
+            <th className="w-[38%] whitespace-nowrap py-2 text-right font-semibold">Venta neta</th>
+            <th className="w-[17%] whitespace-nowrap py-2 text-right font-semibold">Part.</th>
           </tr>
         </thead>
         <tbody>
           {data.map((d) => (
             <tr key={d.nombre} className="border-b border-border/60 last:border-0">
-              <td className="max-w-[220px] truncate py-2 pr-2">{d.nombre}</td>
-              <td className="py-2 text-right tabular-nums">{fmtGs(d.valor)}</td>
-              <td className="py-2 text-right tabular-nums text-muted-foreground">
+              <td className="w-[45%] break-words py-2 pr-3 align-top leading-snug">{d.nombre}</td>
+              <td className="w-[38%] whitespace-nowrap py-2 text-right tabular-nums align-top">
+                {fmtGs(d.valor)}
+              </td>
+              <td className="w-[17%] whitespace-nowrap py-2 text-right tabular-nums text-muted-foreground align-top">
                 {fmtPct(d.participacion)}
               </td>
             </tr>

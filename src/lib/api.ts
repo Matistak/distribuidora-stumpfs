@@ -15,7 +15,7 @@ import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "./types";
  *  GET    /api/uploads/:id            -> estado de un procesamiento
  *  GET    /api/dashboard              -> KPIs + series + rankings (query: desde, hasta, vendedor, canal, ciudad, zona)
  *  GET    /api/filtros                -> listas de vendedores / canales / ciudades / zonas
- *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize + filtros)
+ *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
  */
 
 export const API_URL = (import.meta.env["VITE_API_URL"] as string | undefined) ?? "";
@@ -39,16 +39,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const qs = (params: Record<string, string | number | undefined>) => {
   const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") sp.set(k, String(v));
+  for (const [k, v] of Object.entries(params))
+    if (v !== undefined && v !== "") sp.set(k, String(v));
   const s = sp.toString();
   return s ? `?${s}` : "";
 };
 
-export type UploadResponse = { id: string; filas: number; estado: "procesado" | "procesando" };
-export type UploadHistorial = {
-  id: string;
+export type UploadResponse = {
+  id: number;
   archivo: string;
-  filas: number;
+  filasTotales: number;
+  filasNuevas: number;
+  filasOmitidas: number;
+  estado: string;
+};
+export type UploadHistorial = {
+  id: number;
+  archivo: string;
+  filasTotales: number;
+  filasNuevas: number;
+  filasOmitidas: number;
   creadoEn: string;
   estado: string;
 };
@@ -78,7 +88,7 @@ export function subirExcel(file: File, onProgress?: (pct: number) => void) {
 export const listarCargas = () => request<UploadHistorial[]>("/api/uploads");
 
 /** GET /api/uploads/:id */
-export const estadoCarga = (id: string) => request<UploadResponse>(`/api/uploads/${id}`);
+export const estadoCarga = (id: number) => request<UploadHistorial>(`/api/uploads/${id}`);
 
 /** GET /api/dashboard */
 export const obtenerDashboard = (filtros: Filtros & { desde?: string; hasta?: string } = {}) =>
@@ -88,6 +98,5 @@ export const obtenerDashboard = (filtros: Filtros & { desde?: string; hasta?: st
 export const obtenerFiltros = () => request<OpcionesFiltro>("/api/filtros");
 
 /** GET /api/ventas */
-export const listarVentas = (
-  params: Filtros & { page?: number; pageSize?: number } = {},
-) => request<{ data: VentaRow[]; total: number }>(`/api/ventas${qs(params)}`);
+export const listarVentas = (params: Filtros & { page?: number; pageSize?: number } = {}) =>
+  request<{ data: VentaRow[]; total: number }>(`/api/ventas${qs(params)}`);
