@@ -1,6 +1,29 @@
-# Data Dashboard Magic
+# Distribuidora
 
-Quiero hacer un proyecto que pueda recibir un excel y tenga un dashboard con graficos donde se vaya actualizando con los datos del excel. Tener en cuenta que el excel siempre llegara con estas mismas columnas. Entiendo que tambien necesito un backend, por lo que quiero que me dejes el front preparado para conectar con le back y que tecnologias voy a necesitar. Tambien prepara los fetchs con los endpoints que va a necesitar el back
+Aplicación de escritorio para importar Excels de ventas y consultar un dashboard
+comercial. Está pensada para una sola persona y utiliza SQLite como base local.
+
+El volumen esperado es de aproximadamente 25.000 filas por mes. La información
+se conserva entre sesiones en la base SQLite administrada por el backend local.
+
+## Arquitectura
+
+```text
+React + Tauri
+       |
+Fastify local como sidecar
+       |
+Prisma + SQLite
+```
+
+- Frontend: React, TypeScript y Vite.
+- Backend: proyecto hermano `../distribuidora-backend`.
+- Base de datos: SQLite.
+- API: Fastify en `127.0.0.1:3001`.
+- API del frontend: `src/lib/api.ts`.
+
+La documentación de endpoints, persistencia y reglas de importación está en
+`BACKEND.md`. El trabajo pendiente está organizado en `plan.md`.
 
 This project was built with [Lovable](https://lovable.dev).
 
@@ -14,13 +37,36 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.
 - **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
-## Development
+## Desarrollo
 
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
 npm i
 npm run dev
 ```
+
+En otra terminal, iniciar el backend:
+
+```sh
+cd ../distribuidora-backend
+npm i
+npm run db:generate
+npm run db:push
+npm run dev
+```
+
+El frontend de desarrollo usa `VITE_API_URL=http://localhost:3001`.
+
+## Empaquetado de escritorio
+
+El backend se compila como sidecar y Tauri lo inicia junto con la aplicación:
+
+```sh
+node scripts/setup-sidecar.js
+npm run tauri:build
+```
+
+La base incluida en `src-tauri/resources/` es únicamente una semilla. La base
+activa se copia al directorio de datos de la aplicación para que los datos no se
+pierdan al actualizar el instalador.

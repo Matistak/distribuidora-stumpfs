@@ -32,23 +32,6 @@ import { backendConectado } from "@/lib/api";
 import type { Filtros, VentaRow } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Tablero de Control Comercial | Ventas desde Excel" },
-      {
-        name: "description",
-        content:
-          "Cargá tu Excel de ventas y visualizá KPIs, evolución diaria, ranking de vendedores, ciudades y clientes en un dashboard interactivo.",
-      },
-      { property: "og:title", content: "Tablero de Control Comercial" },
-      {
-        property: "og:description",
-        content: "Dashboard de ventas actualizado automáticamente con los datos de tu Excel.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
   component: Dashboard,
 });
 
