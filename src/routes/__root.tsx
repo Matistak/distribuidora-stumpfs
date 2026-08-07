@@ -1,5 +1,5 @@
 import { Link, Outlet, createRootRoute, useRouter, useRouterState } from "@tanstack/react-router";
-import { BarChart3, ClipboardList, Truck, type LucideIcon } from "lucide-react";
+import { BarChart3, ClipboardList, FileSpreadsheet, Truck, type LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import {
@@ -17,6 +17,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { UploadStateProvider } from "@/lib/upload-state";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -87,18 +88,20 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="flex min-h-svh flex-col">
-          <div className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
-            <SidebarTrigger />
-            <span className="text-sm font-semibold">Distribuidora Stumpfs</span>
+    <UploadStateProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex min-h-svh flex-col">
+            <div className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
+              <SidebarTrigger />
+              <span className="text-sm font-semibold">Distribuidora Stumpfs</span>
+            </div>
+            <Outlet />
           </div>
-          <Outlet />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </UploadStateProvider>
   );
 }
 
@@ -129,6 +132,12 @@ function AppSidebar() {
             <SidebarMenu>
               <SidebarNavItem to="/" label="Dashboard" icon={BarChart3} active={pathname === "/"} />
               <SidebarNavItem
+                to="/carga"
+                label="Cargar Excel"
+                icon={FileSpreadsheet}
+                active={pathname.startsWith("/carga")}
+              />
+              <SidebarNavItem
                 to="/ventas"
                 label="Ventas"
                 icon={ClipboardList}
@@ -152,7 +161,7 @@ function SidebarNavItem({
   icon: Icon,
   active,
 }: {
-  to: "/" | "/ventas";
+  to: "/" | "/carga" | "/ventas";
   label: string;
   icon: LucideIcon;
   active: boolean;

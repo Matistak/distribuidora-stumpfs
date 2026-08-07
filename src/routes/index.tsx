@@ -21,7 +21,6 @@ import {
   TablaRanking,
 } from "@/components/dashboard/Charts";
 import { KpiCard, Panel } from "@/components/dashboard/KpiCard";
-import { UploadPanel } from "@/components/dashboard/UploadPanel";
 import { Input } from "@/components/ui/input";
 import {
   aplicarFiltros,
@@ -32,7 +31,8 @@ import {
   opcionesFiltro,
 } from "@/lib/metrics";
 import { backendConectado, obtenerDashboard, obtenerFiltros } from "@/lib/api";
-import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "@/lib/types";
+import type { DashboardData, Filtros, OpcionesFiltro } from "@/lib/types";
+import { useUploadState } from "@/lib/use-upload-state";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -47,15 +47,11 @@ const OPCIONES_VACIAS: OpcionesFiltro = {
 
 function Dashboard() {
   const backend = backendConectado();
-  const [rows, setRows] = useState<VentaRow[]>([]);
-  const [archivo, setArchivo] = useState<string>();
-  const [filasCargadas, setFilasCargadas] = useState<number>();
+  const { rows, actualizacion } = useUploadState();
   const [filtros, setFiltros] = useState<Filtros>({});
   const [dashboardBackend, setDashboardBackend] = useState<DashboardData | null>(null);
   const [opcionesBackend, setOpcionesBackend] = useState<OpcionesFiltro>(OPCIONES_VACIAS);
   const [cargandoBackend, setCargandoBackend] = useState(backend);
-  const [actualizacion, setActualizacion] = useState(0);
-
   useEffect(() => {
     if (!backend) return;
 
@@ -201,125 +197,102 @@ function Dashboard() {
       </header>
 
       <main className="@container mx-auto max-w-[1600px] space-y-4 px-4 py-5 lg:px-8">
-        <div className="grid gap-4 @4xl:grid-cols-[1fr_320px]">
-          <div className="@container">
-            <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
-              <KpiCard
-                titulo="Venta neta"
-                valor={fmtGs(d.kpis.ventaNeta)}
-                detalle={`Bruta: ${fmtGs(d.kpis.ventaBruta)}`}
-                icon={Wallet}
-              />
-              <KpiCard
-                titulo="Facturas"
-                valor={fmtNum(d.kpis.cantidadFacturas)}
-                detalle={`${fmtNum(d.kpis.notasCredito)} notas de crédito`}
-                icon={FileText}
-                tone="chart5"
-              />
-              <KpiCard
-                titulo="Ticket promedio"
-                valor={fmtGs(d.kpis.ticketPromedio)}
-                icon={Receipt}
-                tone="warning"
-              />
-              <KpiCard
-                titulo="Clientes activos"
-                valor={fmtNum(d.kpis.clientesActivos)}
-                icon={Users}
-                tone="success"
-              />
-              <KpiCard
-                titulo="Unidades vendidas"
-                valor={fmtNum(d.kpis.unidadesVendidas)}
-                icon={Boxes}
-                tone="chart6"
-              />
-              <KpiCard
-                titulo="Productos distintos"
-                valor={fmtNum(d.kpis.productosDistintos)}
-                icon={Layers}
-                tone="primary"
-              />
-              <KpiCard
-                titulo="Margen bruto"
-                valor={fmtPct(d.kpis.margenPorc)}
-                detalle="Sobre venta neta"
-                icon={Percent}
-                tone="success"
-              />
-              <KpiCard
-                titulo="Vendedores activos"
-                valor={fmtNum(opciones.vendedores.length)}
-                icon={BarChart3}
-                tone="destructive"
-              />
-            </div>
+        <section className="@container min-w-0 space-y-4">
+          <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
+            <KpiCard
+              titulo="Venta neta"
+              valor={fmtGs(d.kpis.ventaNeta)}
+              detalle={`Bruta: ${fmtGs(d.kpis.ventaBruta)}`}
+              icon={Wallet}
+            />
+            <KpiCard
+              titulo="Facturas"
+              valor={fmtNum(d.kpis.cantidadFacturas)}
+              detalle={`${fmtNum(d.kpis.notasCredito)} notas de crédito`}
+              icon={FileText}
+              tone="chart5"
+            />
+            <KpiCard
+              titulo="Ticket promedio"
+              valor={fmtGs(d.kpis.ticketPromedio)}
+              icon={Receipt}
+              tone="warning"
+            />
+            <KpiCard
+              titulo="Clientes activos"
+              valor={fmtNum(d.kpis.clientesActivos)}
+              icon={Users}
+              tone="success"
+            />
+            <KpiCard
+              titulo="Unidades vendidas"
+              valor={fmtNum(d.kpis.unidadesVendidas)}
+              icon={Boxes}
+              tone="chart6"
+            />
+            <KpiCard
+              titulo="Productos distintos"
+              valor={fmtNum(d.kpis.productosDistintos)}
+              icon={Layers}
+              tone="primary"
+            />
+            <KpiCard
+              titulo="Margen bruto"
+              valor={fmtPct(d.kpis.margenPorc)}
+              detalle="Sobre venta neta"
+              icon={Percent}
+              tone="success"
+            />
+            <KpiCard
+              titulo="Vendedores activos"
+              valor={fmtNum(opciones.vendedores.length)}
+              icon={BarChart3}
+              tone="destructive"
+            />
           </div>
 
-          <UploadPanel
-            onDatos={
-              backend
-                ? undefined
-                : (r, nombre) => {
-                    setRows(r);
-                    setArchivo(nombre);
-                    setFilasCargadas(r.length);
-                    setFiltros({});
-                  }
-            }
-            onCarga={(carga) => {
-              setArchivo(carga.archivo);
-              setFilasCargadas(carga.filasTotales);
-              setFiltros({});
-              setActualizacion((version) => version + 1);
-            }}
-            archivo={archivo}
-            filas={filasCargadas}
-          />
-        </div>
+          {hayDatos && d ? (
+            <>
+              <div className="grid gap-4 @5xl:grid-cols-3">
+                <Panel titulo="Evolución de ventas diarias" className="@5xl:col-span-2">
+                  <EvolucionDiaria data={d.ventasPorDia} />
+                </Panel>
+                <Panel titulo="Ventas por ciudad">
+                  <DonaParticipacion data={d.ventasPorCiudad} />
+                </Panel>
+              </div>
 
-        {hayDatos && d ? (
-          <>
-            <div className="grid gap-4 @5xl:grid-cols-3">
-              <Panel titulo="Evolución de ventas diarias" className="@5xl:col-span-2">
-                <EvolucionDiaria data={d.ventasPorDia} />
-              </Panel>
-              <Panel titulo="Ventas por ciudad">
-                <DonaParticipacion data={d.ventasPorCiudad} />
-              </Panel>
-            </div>
+              <div className="grid gap-4 @3xl:grid-cols-2">
+                <Panel titulo="Ventas por vendedor (top 10)">
+                  <RankingBarras data={d.ventasPorVendedor} />
+                </Panel>
+                <Panel titulo="Ventas por marca (top 10)">
+                  <RankingBarras data={d.ventasPorMarca} />
+                </Panel>
+              </div>
 
-            <div className="grid gap-4 @3xl:grid-cols-2">
-              <Panel titulo="Ventas por vendedor (top 10)">
-                <RankingBarras data={d.ventasPorVendedor} />
-              </Panel>
-              <Panel titulo="Ventas por marca (top 10)">
-                <RankingBarras data={d.ventasPorMarca} />
-              </Panel>
+              <div className="grid gap-4 @5xl:grid-cols-3">
+                <Panel titulo="Ventas por canal">
+                  <TablaRanking data={d.ventasPorCanal} etiqueta="Canal" />
+                </Panel>
+                <Panel titulo="Top 5 clientes">
+                  <TablaRanking data={d.topClientes} etiqueta="Cliente" />
+                </Panel>
+                <Panel titulo="Top productos">
+                  <TablaRanking data={d.topProductos} etiqueta="Producto" />
+                </Panel>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-12 text-center shadow-card">
+              <h2 className="text-base font-semibold">Todavía no hay datos cargados</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                Subí un Excel de ventas con las columnas habituales (cliente, producto, marca,
+                vendedor, canal, zona, ciudad, montos) y el tablero se genera automáticamente.
+              </p>
             </div>
-
-            <div className="grid gap-4 @5xl:grid-cols-3">
-              <Panel titulo="Ventas por canal">
-                <TablaRanking data={d.ventasPorCanal} etiqueta="Canal" />
-              </Panel>
-              <Panel titulo="Top 5 clientes">
-                <TablaRanking data={d.topClientes} etiqueta="Cliente" />
-              </Panel>
-              <Panel titulo="Top productos">
-                <TablaRanking data={d.topProductos} etiqueta="Producto" />
-              </Panel>
-            </div>
-          </>
-        ) : (
-          <div className="rounded-xl border border-border bg-card p-12 text-center shadow-card">
-            <h2 className="text-base font-semibold">Todavía no hay datos cargados</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              Subí un Excel de ventas con las columnas habituales (cliente, producto, marca,
-              vendedor, canal, zona, ciudad, montos) y el tablero se genera automáticamente.
-            </p>
-          </div>
-        )}
+          )}
+        </section>
       </main>
     </div>
   );

@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CargaRouteImport } from './routes/carga'
 import { Route as VentasRouteImport } from './routes/ventas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CargaRoute = CargaRouteImport.update({
+  id: '/carga',
+  path: '/carga',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VentasRoute = VentasRouteImport.update({
@@ -25,27 +31,31 @@ const VentasRoute = VentasRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/carga': typeof CargaRoute
   '/ventas': typeof VentasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/carga': typeof CargaRoute
   '/ventas': typeof VentasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/carga': typeof CargaRoute
   '/ventas': typeof VentasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ventas'
+  fullPaths: '/' | '/carga' | '/ventas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ventas'
-  id: '__root__' | '/' | '/ventas'
+  to: '/' | '/carga' | '/ventas'
+  id: '__root__' | '/' | '/carga' | '/ventas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CargaRoute: typeof CargaRoute
   VentasRoute: typeof VentasRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/carga': {
+      id: '/carga'
+      path: '/carga'
+      fullPath: '/carga'
+      preLoaderRoute: typeof CargaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ventas': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CargaRoute: CargaRoute,
   VentasRoute: VentasRoute,
 }
 export const routeTree = rootRouteImport

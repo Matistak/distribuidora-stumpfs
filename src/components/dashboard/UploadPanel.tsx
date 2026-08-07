@@ -1,31 +1,56 @@
 import { useRef, useState } from "react";
-import { FileSpreadsheet, Loader2, UploadCloud } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileSpreadsheet, Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { backendConectado, subirExcel, type UploadResponse } from "@/lib/api";
 import { parseExcel } from "@/lib/excel";
 import type { VentaRow } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+type ResumenCarga = {
+  correcta: boolean;
+  filasNuevas: number;
+  filasOmitidas: number;
+  sinErrores: boolean;
+  detalleError?: string;
+};
 
 export function UploadPanel({
   onDatos,
   onCarga,
   archivo,
   filas,
+  className,
 }: {
   onDatos?: (rows: VentaRow[], nombre: string) => void;
   onCarga?: (carga: UploadResponse) => void | Promise<void>;
   archivo?: string | undefined;
   filas?: number | undefined;
+  className?: string;
 }) {
   const [cargando, setCargando] = useState(false);
+  const [resumen, setResumen] = useState<ResumenCarga>();
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function procesar(file: File) {
     setCargando(true);
+    setResumen(undefined);
     try {
       if (backendConectado()) {
         const carga = await subirExcel(file);
+        const estado = carga.estado.trim().toLowerCase();
+        const tieneError = ["error", "fallido", "fallida", "rechazado", "rechazada"].some(
+          (palabra) => estado.includes(palabra),
+        );
+
         await onCarga?.(carga);
+        setResumen({
+          correcta: !tieneError,
+          filasNuevas: carga.filasNuevas,
+          filasOmitidas: carga.filasOmitidas,
+          sinErrores: !tieneError,
+          ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
+        });
         toast.success(`${carga.filasNuevas.toLocaleString("es-PY")} filas nuevas procesadas`);
         return;
       }
@@ -33,9 +58,23 @@ export function UploadPanel({
       const rows = await parseExcel(file);
       if (!rows.length) throw new Error("El archivo no contiene filas");
       onDatos?.(rows, file.name);
+      setResumen({
+        correcta: true,
+        filasNuevas: rows.length,
+        filasOmitidas: 0,
+        sinErrores: true,
+      });
       toast.success(`${rows.length.toLocaleString("es-PY")} filas procesadas`);
     } catch (e) {
-      toast.error("No se pudo leer el Excel", { description: (e as Error).message });
+      const detalleError = e instanceof Error ? e.message : "Error desconocido";
+      setResumen({
+        correcta: false,
+        filasNuevas: 0,
+        filasOmitidas: 0,
+        sinErrores: false,
+        detalleError,
+      });
+      toast.error("No se pudo leer el Excel", { description: detalleError });
     } finally {
       setCargando(false);
     }
@@ -49,7 +88,10 @@ export function UploadPanel({
         const file = e.dataTransfer.files?.[0];
         if (file) void procesar(file);
       }}
-      className="self-start rounded-xl border border-dashed border-border bg-card p-4 text-center shadow-card"
+      className={cn(
+        "self-start rounded-xl border border-dashed border-border bg-card p-4 text-center shadow-card",
+        className,
+      )}
     >
       <input
         ref={inputRef}
@@ -70,7 +112,9 @@ export function UploadPanel({
           )}
         </span>
         <p className="text-sm font-semibold">Cargar Excel de ventas</p>
-        <p className="text-xs text-muted-foreground">Arrastrá el archivo .xlsx o elegilo</p>
+        <p className="text-xs text-muted-foreground">
+          Arrastrá y soltá tu archivo .xlsx o .xls aquí
+        </p>
         <Button size="sm" disabled={cargando} onClick={() => inputRef.current?.click()}>
           {cargando ? "Procesando…" : "Seleccionar archivo"}
         </Button>
@@ -80,7 +124,94 @@ export function UploadPanel({
             {archivo} · {filas?.toLocaleString("es-PY")} filas
           </p>
         ) : null}
+        {resumen ? <ResumenCargaView resumen={resumen} /> : null}
       </div>
+    </div>
+  );
+}
+
+function ResumenCargaView({ resumen }: { resumen: ResumenCarga }) {
+  return (
+    <section
+      className={cn(
+        "mt-4 w-full max-w-xl rounded-xl border p-4 text-left",
+        resumen.correcta
+          ? "border-success/30 bg-success/5"
+          : "border-destructive/30 bg-destructive/5",
+      )}
+      aria-live="polite"
+    >
+      <div className="flex items-start gap-3">
+        {resumen.correcta ? (
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />
+        ) : (
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+        )}
+        <div>
+          <h3 className="text-sm font-semibold">
+            {resumen.correcta ? "Carga correcta" : "La carga tuvo errores"}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {resumen.correcta
+              ? "El archivo fue procesado y ya está disponible en el tablero."
+              : "El archivo no pudo procesarse correctamente."}
+          </p>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid gap-2 sm:grid-cols-2">
+        <ResumenDato
+          label="Carga correcta"
+          value={resumen.correcta ? "Sí" : "No"}
+          positivo={resumen.correcta}
+        />
+        <ResumenDato
+          label="Filas nuevas"
+          value={resumen.filasNuevas.toLocaleString("es-PY")}
+          positivo={undefined}
+        />
+        <ResumenDato
+          label="Sin errores"
+          value={resumen.sinErrores ? "Sí" : "No"}
+          positivo={resumen.sinErrores}
+        />
+        <ResumenDato
+          label="Filas omitidas"
+          value={resumen.filasOmitidas.toLocaleString("es-PY")}
+          positivo={undefined}
+        />
+      </dl>
+
+      {resumen.detalleError ? (
+        <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {resumen.detalleError}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function ResumenDato({
+  label,
+  value,
+  positivo,
+}: {
+  label: string;
+  value: string;
+  positivo: boolean | undefined;
+}) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2">
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "mt-0.5 text-sm font-semibold",
+          positivo === true && "text-success",
+          positivo === false && "text-destructive",
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
