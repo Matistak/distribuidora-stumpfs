@@ -123,33 +123,47 @@ function Dashboard() {
       <Toaster position="top-right" />
 
       {/* Encabezado */}
-      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-4 px-4 py-3 lg:px-8">
-          <div className="flex items-center gap-3">
-            <span
-              className="grid size-10 place-items-center rounded-lg text-primary-foreground"
-              style={{ backgroundImage: "var(--gradient-brand)" }}
-            >
-              <Truck className="size-5" />
-            </span>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight">Tablero de Control Comercial</h1>
-              <p className="text-xs text-muted-foreground">
-                {hayDatos
-                  ? `Período ${d?.periodo.desde} → ${d?.periodo.hasta}${backend ? "" : ` · ${fmtNum(filtradas.length)} líneas`}`
-                  : "Visión general del negocio"}
-              </p>
-            </div>
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-end justify-between gap-4 px-6 py-6 lg:px-10">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-warning">
+              Distribuidora Stumpfs
+            </p>
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+              Resumen Comercial
+            </h1>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">
+              {hayDatos
+                ? `Período ${d?.periodo.desde} → ${d?.periodo.hasta}${backend ? "" : ` · ${fmtNum(filtradas.length)} líneas`}`
+                : "Análisis de rendimiento comercial"}
+            </p>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
+              backend ? "bg-success/10 text-success" : "bg-warning/15 text-warning-foreground"
+            }`}
+          >
+            {backend
+              ? cargandoBackend
+                ? "Cargando datos..."
+                : "Backend conectado"
+              : "Modo local"}
+          </span>
+        </div>
+
+        <div className="border-t border-border bg-secondary/60">
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-6 py-3 lg:px-10">
+            <span className="mr-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Filtros
+            </span>
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               Desde
               <Input
                 type="date"
                 value={filtros.desde ?? ""}
                 onChange={setFecha("desde")}
-                className="h-9 w-[140px] text-xs"
+                className="h-9 w-[140px] bg-card text-xs"
                 aria-label="Fecha desde"
               />
             </label>
@@ -159,7 +173,7 @@ function Dashboard() {
                 type="date"
                 value={filtros.hasta ?? ""}
                 onChange={setFecha("hasta")}
-                className="h-9 w-[140px] text-xs"
+                className="h-9 w-[140px] bg-card text-xs"
                 aria-label="Fecha hasta"
               />
             </label>
@@ -187,24 +201,14 @@ function Dashboard() {
               opciones={opciones.zonas}
               onChange={setFiltro("zona")}
             />
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                backend ? "bg-success/10 text-success" : "bg-warning/15 text-warning-foreground"
-              }`}
-            >
-              {backend
-                ? cargandoBackend
-                  ? "Cargando datos..."
-                  : "Backend conectado"
-                : "Modo local (sin backend)"}
-            </span>
           </div>
         </div>
       </header>
 
-      <main className="@container mx-auto max-w-[1600px] space-y-4 px-4 py-5 lg:px-8">
-        <section className="@container min-w-0 space-y-4">
-          <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
+      <main className="@container mx-auto max-w-[1600px] space-y-6 px-6 py-7 lg:px-10">
+        <section className="@container min-w-0 space-y-6">
+          <div className="grid gap-5 @md:grid-cols-2 @4xl:grid-cols-4">
+
             <KpiCard
               titulo="Venta neta"
               valor={fmtGs(d.kpis.ventaNeta)}

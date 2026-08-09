@@ -3,13 +3,22 @@ import { cn } from "@/lib/utils";
 
 type Tone = "primary" | "success" | "warning" | "destructive" | "chart5" | "chart6";
 
-const toneBg: Record<Tone, string> = {
-  primary: "bg-primary/10 text-primary",
-  success: "bg-success/10 text-success",
-  warning: "bg-warning/15 text-warning",
-  destructive: "bg-destructive/10 text-destructive",
-  chart5: "bg-chart-5/10 text-chart-5",
-  chart6: "bg-chart-6/10 text-chart-6",
+const toneBorder: Record<Tone, string> = {
+  primary: "border-t-primary",
+  success: "border-t-success",
+  warning: "border-t-warning",
+  destructive: "border-t-chart-4",
+  chart5: "border-t-chart-5",
+  chart6: "border-t-chart-6",
+};
+
+const toneIcon: Record<Tone, string> = {
+  primary: "text-primary",
+  success: "text-success",
+  warning: "text-warning",
+  destructive: "text-chart-4",
+  chart5: "text-chart-5",
+  chart6: "text-chart-6",
 };
 
 export function KpiCard({
@@ -30,28 +39,23 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-4 shadow-card transition-shadow hover:shadow-lg",
+        "rounded-xl border border-border border-t-4 bg-card p-5 shadow-card transition-shadow hover:shadow-lg",
+        toneBorder[tone],
         className,
       )}
     >
-      <div className="flex items-start gap-3">
-        <span className={cn("grid size-10 shrink-0 place-items-center rounded-full", toneBg[tone])}>
-          <Icon className="size-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            {titulo}
-          </p>
-          <p className="mt-1 break-words text-lg font-bold leading-tight text-foreground sm:text-xl">
-            {valor}
-          </p>
-          {detalle ? (
-            <p className="mt-0.5 break-words text-xs leading-tight text-muted-foreground">
-              {detalle}
-            </p>
-          ) : null}
-        </div>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          {titulo}
+        </p>
+        <Icon className={cn("size-4 shrink-0", toneIcon[tone])} />
       </div>
+      <p className="mt-2 break-words font-display text-2xl font-bold leading-tight text-foreground">
+        {valor}
+      </p>
+      {detalle ? (
+        <p className="mt-1.5 break-words text-xs leading-tight text-muted-foreground">{detalle}</p>
+      ) : null}
     </div>
   );
 }
@@ -68,12 +72,14 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border border-border bg-card p-4 shadow-card", className)}>
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold tracking-wide text-foreground uppercase">{titulo}</h2>
+    <section
+      className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-card", className)}
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+        <h2 className="font-display text-sm font-semibold text-foreground">{titulo}</h2>
         {accion}
       </header>
-      {children}
+      <div className="p-5">{children}</div>
     </section>
   );
 }
