@@ -111,26 +111,29 @@ function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-3 px-2 py-3">
-          <span
-            className="grid size-10 shrink-0 place-items-center rounded-lg text-primary-foreground"
-            style={{ backgroundImage: "var(--gradient-brand)" }}
-          >
+        <div className="flex items-center gap-3 px-2 py-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
             <Truck className="size-5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">Distribuidora</p>
-            <p className="truncate text-xs text-sidebar-foreground/65">Stumpfs</p>
+            <p className="truncate font-display text-base font-bold text-sidebar-primary">
+              Stumpfs SA
+            </p>
+            <p className="truncate text-[10px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/60">
+              Distribuidora
+            </p>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menú principal</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/50">
+            Menú principal
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarNavItem to="/" label="Dashboard" icon={BarChart3} active={pathname === "/"} />
+              <SidebarNavItem to="/" label="Tablero Comercial" icon={BarChart3} active={pathname === "/"} />
               <SidebarNavItem
                 to="/carga"
                 label="Cargar Excel"
@@ -148,10 +151,19 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <div className="mt-auto border-t border-sidebar-border p-4 text-xs text-sidebar-foreground/60">
-        Panel comercial
+      <div className="mt-auto border-t border-sidebar-border p-4">
+        <div className="flex items-center gap-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground">
+            JS
+          </span>
+          <div className="min-w-0 text-xs">
+            <p className="truncate font-semibold text-sidebar-foreground">Jorge Stumpf</p>
+            <p className="truncate text-sidebar-foreground/60">Director General</p>
+          </div>
+        </div>
       </div>
     </Sidebar>
+
   );
 }
 
