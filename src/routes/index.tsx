@@ -30,7 +30,7 @@ import {
   fmtPct,
   opcionesFiltro,
 } from "@/lib/metrics";
-import { backendConectado, obtenerDashboard, obtenerFiltros } from "@/lib/api";
+import { backendConectado, mensajeError, obtenerDashboard, obtenerFiltros } from "@/lib/api";
 import type { DashboardData, Filtros, OpcionesFiltro } from "@/lib/types";
 import { useUploadState } from "@/lib/use-upload-state";
 
@@ -65,7 +65,10 @@ function Dashboard() {
       .catch((error: unknown) => {
         if (activo) {
           toast.error("No se pudo cargar el dashboard", {
-            description: error instanceof Error ? error.message : "Error de conexión",
+            description: mensajeError(
+              error,
+              "No fue posible obtener los datos. Intentá nuevamente.",
+            ),
           });
         }
       })
@@ -89,7 +92,10 @@ function Dashboard() {
       .catch((error: unknown) => {
         if (activo) {
           toast.error("No se pudieron cargar los filtros", {
-            description: error instanceof Error ? error.message : "Error de conexión",
+            description: mensajeError(
+              error,
+              "No fue posible obtener los filtros. Intentá nuevamente.",
+            ),
           });
         }
       });

@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.distribuidora.app",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev:back",
+    "beforeBuildCommand": "npm run build:back",
     "devUrl": "http://localhost:3000",
     "frontendDist": "../dist"
   },

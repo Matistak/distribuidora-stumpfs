@@ -47,16 +47,23 @@ npm run db:push
 npm run dev
 ```
 
-En otra terminal, desde este proyecto:
+En otra terminal, desde este proyecto, se puede elegir el modo explícitamente:
 
 ```bash
 npm install
-npm run dev
+npm run dev:back
 ```
 
-El frontend usa `VITE_API_URL=http://localhost:3001`. Si la variable está
-vacía, conserva el modo local que procesa el Excel en el navegador. Ese modo es
-un fallback de desarrollo; la versión persistente debe usar la API y SQLite.
+El modo `back` usa `VITE_API_URL=http://localhost:3001` y persiste en SQLite.
+Para ejecutar el flujo que usa Lovable, sin persistencia, usar:
+
+```bash
+npm run dev:mock
+```
+
+El modo `mock` procesa el Excel en el navegador y conserva los datos solamente
+mientras la página está abierta. `npm run dev` y el build estándar usan mock;
+Tauri usa back mediante su configuración propia.
 
 ## Persistencia con Tauri
 

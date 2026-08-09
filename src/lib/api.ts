@@ -2,11 +2,10 @@ import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "./types";
 
 /**
  * ============================================================
- *  CAPA DE API — lista para conectar con el backend
+ *  CAPA DE API — compatible con modo mock y backend
  * ============================================================
- * Definir VITE_API_URL (ej: https://api.midominio.com) para que el
- * dashboard consuma el backend real. Si no esta definida, la app
- * funciona en "modo local" procesando el Excel en el navegador.
+ * El modo se selecciona con el comando de Vite. En modo mock la app procesa
+ * el Excel en el navegador; en modo back consume VITE_API_URL.
  *
  * Endpoints que debe exponer el backend:
  *
@@ -18,21 +17,68 @@ import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "./types";
  *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
  */
 
-export const API_URL = (import.meta.env["VITE_API_URL"] as string | undefined) ?? "";
+export type AppMode = "mock" | "back";
+
+export const APP_MODE: AppMode = import.meta.env["VITE_APP_MODE"] === "back" ? "back" : "mock";
+export const API_URL =
+  APP_MODE === "back" ? ((import.meta.env["VITE_API_URL"] as string | undefined) ?? "") : "";
 export const backendConectado = () => API_URL.length > 0;
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(
+      status >= 500
+        ? "El servidor no pudo completar la solicitud. Intentá nuevamente."
+        : status === 401 || status === 403
+          ? "No tenés permisos para realizar esta acción."
+          : status === 404
+            ? "No se encontró la información solicitada."
+            : status === 400
+              ? "La solicitud no es válida. Revisá los filtros e intentá nuevamente."
+              : "No se pudo completar la solicitud. Intentá nuevamente.",
+    );
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+class NetworkError extends Error {
+  constructor() {
+    super(
+      "No se pudo conectar con el servidor. Verificá que esté disponible e intentá nuevamente.",
+    );
+    this.name = "NetworkError";
+  }
+}
+
+export function mensajeError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError || error instanceof NetworkError) return error.message;
+  if (error instanceof Error && error.message === "El archivo no contiene filas") {
+    return error.message;
+  }
+  return fallback;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(init?.headers ?? {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch {
+    throw new NetworkError();
+  }
+
   if (!res.ok) {
-    const detalle = await res.text();
-    throw new Error(`API ${res.status} en ${path}: ${detalle}`);
+    // El cuerpo puede contener trazas, rutas y detalles internos del servidor.
+    throw new ApiError(res.status);
   }
   return (await res.json()) as T;
 }
@@ -78,8 +124,8 @@ export function subirExcel(file: File, onProgress?: (pct: number) => void) {
     xhr.onload = () =>
       xhr.status >= 200 && xhr.status < 300
         ? resolve(JSON.parse(xhr.responseText) as UploadResponse)
-        : reject(new Error(`API ${xhr.status}: ${xhr.responseText}`));
-    xhr.onerror = () => reject(new Error("Error de red al subir el archivo"));
+        : reject(new ApiError(xhr.status));
+    xhr.onerror = () => reject(new NetworkError());
     xhr.send(form);
   });
 }

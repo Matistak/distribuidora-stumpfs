@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { aplicarFiltros, fmtGs, fmtNum } from "@/lib/metrics";
-import { listarVentas } from "@/lib/api";
+import { listarVentas, mensajeError } from "@/lib/api";
 import type { Filtros, VentaRow } from "@/lib/types";
 
 const PAGE_SIZE = 25;
@@ -66,7 +66,7 @@ export function VentasTable({
       })
       .catch((cause: unknown) => {
         if (activo) {
-          setError(cause instanceof Error ? cause.message : "No se pudieron cargar las ventas");
+          setError(mensajeError(cause, "No fue posible obtener las ventas. Intentá nuevamente."));
         }
       })
       .finally(() => {

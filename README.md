@@ -43,8 +43,18 @@ Prefer working locally? You need Node.js and npm — [install with nvm](https://
 
 ```sh
 npm i
-npm run dev
+npm run dev:mock
 ```
+
+El modo mock es el predeterminado para Lovable: procesa el Excel en el
+navegador y no persiste datos. Para conectarte al backend local y guardar en
+SQLite, iniciá el backend en otra terminal y levantá el frontend con:
+
+```sh
+npm run dev:back
+```
+
+También podés usar `npm run dev`, que es un alias de `npm run dev:mock`.
 
 En otra terminal, iniciar el backend:
 
@@ -56,7 +66,8 @@ npm run db:push
 npm run dev
 ```
 
-El frontend de desarrollo usa `VITE_API_URL=http://localhost:3001`.
+Los modos están definidos en `.env.mock` y `.env.back`. El modo `back` usa
+`VITE_API_URL=http://localhost:3001`; el modo `mock` deja esa variable vacía.
 
 ## Empaquetado de escritorio
 
@@ -66,6 +77,9 @@ El backend se compila como sidecar y Tauri lo inicia junto con la aplicación:
 node scripts/setup-sidecar.js
 npm run tauri:build
 ```
+
+Tauri usa automáticamente el modo `back` tanto en desarrollo como al compilar,
+para que la aplicación de escritorio conserve los datos en SQLite.
 
 La base incluida en `src-tauri/resources/` es únicamente una semilla. La base
 activa se copia al directorio de datos de la aplicación para que los datos no se

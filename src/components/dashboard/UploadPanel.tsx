@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, FileSpreadsheet, Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { backendConectado, subirExcel, type UploadResponse } from "@/lib/api";
+import { backendConectado, mensajeError, subirExcel, type UploadResponse } from "@/lib/api";
 import { parseExcel } from "@/lib/excel";
 import type { VentaRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -66,7 +66,10 @@ export function UploadPanel({
       });
       toast.success(`${rows.length.toLocaleString("es-PY")} filas procesadas`);
     } catch (e) {
-      const detalleError = e instanceof Error ? e.message : "Error desconocido";
+      const detalleError = mensajeError(
+        e,
+        "No se pudo procesar el archivo. Revisá que sea un Excel válido e intentá nuevamente.",
+      );
       setResumen({
         correcta: false,
         filasNuevas: 0,

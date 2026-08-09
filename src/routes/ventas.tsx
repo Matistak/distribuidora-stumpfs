@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FiltroSelect } from "@/components/dashboard/FiltroSelect";
 import { VentasTable } from "@/components/dashboard/VentasTable";
-import { backendConectado, obtenerFiltros } from "@/lib/api";
+import { backendConectado, mensajeError, obtenerFiltros } from "@/lib/api";
 import type { Filtros, OpcionesFiltro } from "@/lib/types";
 
 export const Route = createFileRoute("/ventas")({
@@ -36,7 +36,7 @@ function VentasPage() {
       .catch((cause: unknown) => {
         if (activo) {
           setErrorFiltros(
-            cause instanceof Error ? cause.message : "No se pudieron cargar los filtros",
+            mensajeError(cause, "No fue posible obtener los filtros. Intentá nuevamente."),
           );
         }
       });
