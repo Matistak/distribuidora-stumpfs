@@ -157,7 +157,7 @@ function AppSidebar() {
             JS
           </span>
           <div className="min-w-0 text-xs">
-            <p className="truncate font-semibold text-sidebar-foreground">Jorge Stumpf</p>
+            <p className="truncate font-semibold text-sidebar-foreground">Pedro Stumpfs</p>
             <p className="truncate text-sidebar-foreground/60">Director General</p>
           </div>
         </div>
