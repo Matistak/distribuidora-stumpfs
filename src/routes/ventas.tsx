@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ClipboardList, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { FiltroSelect } from "@/components/dashboard/FiltroSelect";
 import { VentasTable } from "@/components/dashboard/VentasTable";
 import { backendConectado, mensajeError, obtenerFiltros } from "@/lib/api";
+import { opcionesFiltro } from "@/lib/metrics";
 import type { Filtros, OpcionesFiltro } from "@/lib/types";
+import { useUploadState } from "@/lib/use-upload-state";
 
 export const Route = createFileRoute("/ventas")({
   component: VentasPage,
@@ -21,9 +23,12 @@ const OPCIONES_VACIAS: OpcionesFiltro = {
 
 function VentasPage() {
   const backend = backendConectado();
+  const { rows } = useUploadState();
   const [filtros, setFiltros] = useState<Filtros>({});
   const [opciones, setOpciones] = useState<OpcionesFiltro>(OPCIONES_VACIAS);
   const [errorFiltros, setErrorFiltros] = useState<string>();
+  const opcionesLocales = useMemo(() => opcionesFiltro(rows), [rows]);
+  const opcionesDisponibles = backend ? opciones : opcionesLocales;
 
   useEffect(() => {
     if (!backend) return;
@@ -72,82 +77,68 @@ function VentasPage() {
       </header>
 
       <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5 lg:px-8">
-        {backend ? (
-          <>
-            <section className="rounded-xl border border-border bg-card p-4 shadow-card">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold">Filtros de consulta</h2>
-                  <p className="text-xs text-muted-foreground">
-                    Refiná los registros antes de recorrer las páginas.
-                  </p>
-                </div>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setFiltros({})}>
-                  <RotateCcw />
-                  Limpiar filtros
-                </Button>
-              </div>
+        <section className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Filtros de consulta</h2>
+              <p className="text-xs text-muted-foreground">
+                Refiná los registros antes de recorrer las páginas.
+              </p>
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFiltros({})}>
+              <RotateCcw />
+              Limpiar filtros
+            </Button>
+          </div>
 
-              <div className="mt-4 flex flex-wrap items-end gap-2">
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  Desde
-                  <Input
-                    type="date"
-                    value={filtros.desde ?? ""}
-                    onChange={setFecha("desde")}
-                    className="h-9 w-[150px] text-xs"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  Hasta
-                  <Input
-                    type="date"
-                    value={filtros.hasta ?? ""}
-                    onChange={setFecha("hasta")}
-                    className="h-9 w-[150px] text-xs"
-                  />
-                </label>
-                <FiltroSelect
-                  placeholder="Todos los vendedores"
-                  valor={filtros.vendedor}
-                  opciones={opciones.vendedores}
-                  onChange={setFiltro("vendedor")}
-                />
-                <FiltroSelect
-                  placeholder="Todos los canales"
-                  valor={filtros.canal}
-                  opciones={opciones.canales}
-                  onChange={setFiltro("canal")}
-                />
-                <FiltroSelect
-                  placeholder="Todas las ciudades"
-                  valor={filtros.ciudad}
-                  opciones={opciones.ciudades}
-                  onChange={setFiltro("ciudad")}
-                />
-                <FiltroSelect
-                  placeholder="Todas las zonas"
-                  valor={filtros.zona}
-                  opciones={opciones.zonas}
-                  onChange={setFiltro("zona")}
-                />
-              </div>
-              {errorFiltros ? (
-                <p className="mt-3 text-xs text-destructive">{errorFiltros}</p>
-              ) : null}
-            </section>
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              Desde
+              <Input
+                type="date"
+                value={filtros.desde ?? ""}
+                onChange={setFecha("desde")}
+                className="h-9 w-[150px] text-xs"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              Hasta
+              <Input
+                type="date"
+                value={filtros.hasta ?? ""}
+                onChange={setFecha("hasta")}
+                className="h-9 w-[150px] text-xs"
+              />
+            </label>
+            <FiltroSelect
+              placeholder="Todos los vendedores"
+              valor={filtros.vendedor}
+              opciones={opcionesDisponibles.vendedores}
+              onChange={setFiltro("vendedor")}
+            />
+            <FiltroSelect
+              placeholder="Todos los canales"
+              valor={filtros.canal}
+              opciones={opcionesDisponibles.canales}
+              onChange={setFiltro("canal")}
+            />
+            <FiltroSelect
+              placeholder="Todas las ciudades"
+              valor={filtros.ciudad}
+              opciones={opcionesDisponibles.ciudades}
+              onChange={setFiltro("ciudad")}
+            />
+            <FiltroSelect
+              placeholder="Todas las zonas"
+              valor={filtros.zona}
+              opciones={opcionesDisponibles.zonas}
+              onChange={setFiltro("zona")}
+            />
+          </div>
+          {errorFiltros ? <p className="mt-3 text-xs text-destructive">{errorFiltros}</p> : null}
+        </section>
 
-            <VentasTable backend filtros={filtros} rows={[]} />
-          </>
-        ) : (
-          <section className="rounded-xl border border-border bg-card p-12 text-center shadow-card">
-            <h2 className="text-base font-semibold">Backend no conectado</h2>
-            <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-              La vista de ventas necesita el backend local para consultar SQLite de forma paginada.
-              Configurá `VITE_API_URL` o iniciá el sidecar para usarla.
-            </p>
-          </section>
-        )}
+        <VentasTable backend={backend} filtros={filtros} rows={rows} />
       </main>
     </div>
   );
