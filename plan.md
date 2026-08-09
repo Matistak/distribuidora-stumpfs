@@ -60,14 +60,14 @@ dashboard; los datos deben provenir de SQLite mediante la API.
 
 Prioridad: alta.
 
-- [ ] Validar que el Excel tenga las columnas esperadas.
-- [ ] Validar fechas, claves y valores numéricos antes de insertar.
-- [ ] Mantener una única transacción por archivo.
-- [ ] Mantener inserciones por lotes.
-- [ ] Evitar cargar todas las claves existentes de `Venta` en memoria antes de cada importación.
-- [ ] Usar la restricción única de SQLite para que reprocesar un archivo sea seguro.
+- [x] Validar que el Excel tenga las columnas esperadas.
+- [x] Validar fechas, claves y valores numéricos antes de insertar.
+- [x] Mantener una única transacción por archivo.
+- [x] Mantener inserciones por lotes.
+- [x] Evitar cargar todas las claves existentes de `Venta` en memoria antes de cada importación.
+- [x] Usar la restricción única de SQLite para que reprocesar un archivo sea seguro.
 - [ ] Confirmar con datos reales que la clave (`nroDoc`, `codProducto`, `nroComprobante`) sea suficiente.
-- [ ] Registrar correctamente filas totales, nuevas, omitidas y errores en `Carga`.
+- [x] Registrar correctamente filas totales, nuevas, omitidas y errores en `Carga`.
 - [ ] Probar dos veces el mismo archivo y verificar que no se dupliquen filas.
 - [ ] Probar un archivo con filas duplicadas dentro del propio Excel.
 
@@ -96,13 +96,13 @@ Prioridad: media, después de tener datos reales.
 
 Responsable de las mediciones de rendimiento: usuario.
 
-- [ ] Activar `journal_mode = WAL`.
-- [ ] Configurar `busy_timeout`.
-- [ ] Revisar las consultas del dashboard con `EXPLAIN QUERY PLAN`.
+- [x] Activar `journal_mode = WAL`.
+- [x] Configurar `busy_timeout`.
+- [x] Revisar las consultas del dashboard con `EXPLAIN QUERY PLAN`.
 - [ ] Medir las consultas con filtros de fecha, vendedor, canal, ciudad y zona.
 - [ ] Agregar índices compuestos solo si las mediciones los justifican.
-- [ ] Ejecutar `PRAGMA optimize` después de cargas importantes o en tareas de mantenimiento.
-- [ ] Confirmar que `/api/ventas` siempre limite el tamaño de página.
+- [x] Ejecutar `PRAGMA optimize` después de cargas importantes o en tareas de mantenimiento.
+- [x] Confirmar que `/api/ventas` siempre limite el tamaño de página.
 
 Criterio de finalización: el dashboard debe responder en un tiempo aceptable con
 al menos 300.000 filas, sin devolver todas las ventas al navegador.

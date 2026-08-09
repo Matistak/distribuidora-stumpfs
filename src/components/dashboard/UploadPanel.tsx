@@ -11,6 +11,7 @@ type ResumenCarga = {
   correcta: boolean;
   filasNuevas: number;
   filasOmitidas: number;
+  filasErrores: number;
   sinErrores: boolean;
   detalleError?: string;
 };
@@ -48,10 +49,17 @@ export function UploadPanel({
           correcta: !tieneError,
           filasNuevas: carga.filasNuevas,
           filasOmitidas: carga.filasOmitidas,
+          filasErrores: carga.filasErrores,
           sinErrores: !tieneError,
           ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         });
-        toast.success(`${carga.filasNuevas.toLocaleString("es-PY")} filas nuevas procesadas`);
+        if (tieneError) {
+          toast.error("La carga terminó con errores", {
+            description: `${carga.filasErrores.toLocaleString("es-PY")} filas no válidas`,
+          });
+        } else {
+          toast.success(`${carga.filasNuevas.toLocaleString("es-PY")} filas nuevas procesadas`);
+        }
         return;
       }
 
@@ -62,6 +70,7 @@ export function UploadPanel({
         correcta: true,
         filasNuevas: rows.length,
         filasOmitidas: 0,
+        filasErrores: 0,
         sinErrores: true,
       });
       toast.success(`${rows.length.toLocaleString("es-PY")} filas procesadas`);
@@ -74,6 +83,7 @@ export function UploadPanel({
         correcta: false,
         filasNuevas: 0,
         filasOmitidas: 0,
+        filasErrores: 0,
         sinErrores: false,
         detalleError,
       });
@@ -182,6 +192,11 @@ function ResumenCargaView({ resumen }: { resumen: ResumenCarga }) {
           label="Filas omitidas"
           value={resumen.filasOmitidas.toLocaleString("es-PY")}
           positivo={undefined}
+        />
+        <ResumenDato
+          label="Filas con errores"
+          value={resumen.filasErrores.toLocaleString("es-PY")}
+          positivo={resumen.filasErrores === 0}
         />
       </dl>
 

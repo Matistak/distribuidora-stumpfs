@@ -97,6 +97,7 @@ export type UploadResponse = {
   filasTotales: number;
   filasNuevas: number;
   filasOmitidas: number;
+  filasErrores: number;
   estado: string;
 };
 export type UploadHistorial = {
@@ -105,6 +106,7 @@ export type UploadHistorial = {
   filasTotales: number;
   filasNuevas: number;
   filasOmitidas: number;
+  filasErrores: number;
   creadoEn: string;
   estado: string;
 };
