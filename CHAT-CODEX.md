@@ -473,6 +473,88 @@ Quedan fuera del MVP:
 - Multiples usuarios.
 - Sincronizacion entre dispositivos.
 
+## Fase 0 - Decisiones tomadas
+
+Estado al 10/08/2026. La base de datos, el modo de autenticacion y el
+transporte local quedan definidos, y la cuenta de Codex esta autenticada.
+Con esto, la Fase 0 queda cerrada y habilitada la Fase 1.
+
+| Tarea de la Fase 0 | Decision | Estado |
+| --- | --- | --- |
+| Aplicacion local y single-user | Confirmado. Ya documentado en `BACKEND.md`: una sola persona, una sola computadora. | Completado |
+| Instalacion de Codex CLI | Instalado via Homebrew: `codex-cli 0.147.0` en `/opt/homebrew/bin/codex`. | Completado |
+| Base de datos | SQLite. `distribuidora-backend/prisma/schema.prisma` declara `provider = "sqlite"`; el documento CHAT-CODEX mencionaba PostgreSQL por error. Se confirma SQLite: en desarrollo `prisma/distribuidora.db`, en produccion el directorio de datos de la app via `bootstrap.ts`. | Completado |
+| Backend en 127.0.0.1 | Confirmado. El sidecar actual usa `host: "127.0.0.1"` en `server.ts`. El sidecar de chat usara el mismo host (puerto a definir en Fase 1/2, sin exponer en la red). | Completado |
+| Autenticacion de Codex | `codex login` con la cuenta de ChatGPT (suscripcion). `codex login status` confirma: "Logged in using ChatGPT". No se usara API key. Se verifica con `codex login status` y `account/read`. La app jamas almacena ni expone tokens. | Completado |
+| Transporte local | Frontend -> Fastify: HTTP + SSE en 127.0.0.1. Fastify -> `app-server`: JSON-RPC por stdio. `app-server` -> MCP de ventas: MCP por stdio. Sin listener de red para Codex. | Completado |
+| Historial de conversaciones | Metadatos propios en SQLite (`id`, `codexThreadId`, `title`, `selectedModel`, fechas) + mensajes desde el historial de Codex via `thread/read`. Persistencia completa de mensajes queda descartada para el MVP. | Completado |
+
+### Pendientes de Fase 0 (a cargo del usuario)
+
+```bash
+npm install -g @openai/codex
+codex login        # abre el navegador para iniciar sesion con ChatGPT
+codex login status # debe confirmar que la cuenta esta autenticada
+```
+
+No copiar `~/.codex/auth.json` a este repositorio ni exponer tokens en
+variables `VITE_*`, logs o respuestas HTTP.
+
+## Fase 1 - Prueba de Codex local
+
+Estado al 10/08/2026. El backend Fastify puede iniciar `codex app-server`,
+completar el handshake `initialize`/`initialized` y confirmar la cuenta via
+`account/read` sin exponer credenciales. Criterio de finalizacion cumplido.
+
+### Implementacion
+
+Nuevos archivos en `distribuidora-backend`:
+
+- `src/chat/jsonrpc.ts` - cliente minimo JSON-RPC sobre stdio (JSONL):
+  escribe requests en stdin, correlaciona respuestas por `id`, publica
+  notificaciones, maneja timeout, proceso terminado y cierre con SIGTERM
+  seguido de SIGKILL.
+- `src/chat/codexService.ts` - ciclo de vida del proceso: deteccion del
+  binario (`codex --version`), inicio de `codex app-server`, handshake
+  `initialize` + notificacion `initialized`, `account/read` y cierre/
+  reinicio controlado.
+- `src/routes/chat.ts` - rutas Fastify de la Etapa 1.
+
+Endpoints:
+
+```text
+GET  /api/chat/status   — estado: instalado, version, corriendo, cuenta (sin tokens)
+POST /api/chat/restart  — cierra y reinicia app-server de forma controlada
+```
+
+### Comportamiento verificado
+
+| Caso | Resultado |
+| --- | --- |
+| Codex instalado y autenticado | `installed: true`, `running: true`, `account: { type: "chatgpt", email, planType }`, `authenticated: true` |
+| Codex sin autenticar (CODEX_HOME vacio) | `authenticated: false` con mensaje accionable: "Ejecuta `codex login` ..." |
+| Codex no instalado (`CODEX_CLI_COMMAND=codex-inexistente`) | `installed: false` con mensaje de instalacion |
+| `POST /api/chat/restart` | Cierra el proceso con SIGTERM y vuelve a iniciarlo en el siguiente request |
+
+La respuesta de `account/read` con `account: null` y `requiresOpenaiAuth: true`
+se traduce en `CodexNotAuthenticatedError` con instrucciones de `codex login`.
+Nunca se devuelven ni registran tokens ni `~/.codex/auth.json`.
+
+### Notas
+
+- El comando de Codex es configurable con `CODEX_CLI_COMMAND` (util para
+  Etapa 8 al resolver rutas de instalacion).
+- El cliente JSON-RPC de esta fase es a proposito simple y sin dependencias:
+  es la base sobre la que la Etapa 2 decide si adaptar `effect-codex-app-server`
+  o mantener este cliente propio.
+- El proceso se cierra en `onClose` de Fastify para no dejar huerfanos.
+
+### Pendiente de validacion (usuario)
+
+- Cerrar la aplicacion y confirmar que `codex app-server` tambien termina.
+- Ejecutar `npm run dev` en `distribuidora-backend` y consultar
+  `GET /api/chat/status` desde la aplicacion.
+
 ## Referencias
 
 - [Codex Authentication](https://developers.openai.com/codex/auth)
