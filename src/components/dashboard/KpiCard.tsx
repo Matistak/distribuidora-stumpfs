@@ -3,15 +3,6 @@ import { cn } from "@/lib/utils";
 
 type Tone = "primary" | "success" | "warning" | "destructive" | "chart5" | "chart6";
 
-const toneBorder: Record<Tone, string> = {
-  primary: "border-t-primary",
-  success: "border-t-success",
-  warning: "border-t-warning",
-  destructive: "border-t-chart-4",
-  chart5: "border-t-chart-5",
-  chart6: "border-t-chart-6",
-};
-
 const toneIcon: Record<Tone, string> = {
   primary: "text-primary",
   success: "text-success",
@@ -39,8 +30,7 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border border-t-4 bg-card p-5 shadow-card transition-shadow hover:shadow-lg",
-        toneBorder[tone],
+        "rounded-xl border border-border bg-card p-5 shadow-card transition-shadow hover:shadow-lg",
         className,
       )}
     >
@@ -73,7 +63,10 @@ export function Panel({
 }) {
   return (
     <section
-      className={cn("overflow-hidden rounded-xl border border-border bg-card shadow-card", className)}
+      className={cn(
+        "overflow-hidden rounded-xl border border-border bg-card shadow-card",
+        className,
+      )}
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-5 py-3.5">
         <h2 className="font-display text-sm font-semibold text-foreground">{titulo}</h2>
