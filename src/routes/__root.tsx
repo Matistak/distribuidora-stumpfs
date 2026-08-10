@@ -1,5 +1,12 @@
 import { Link, Outlet, createRootRoute, useRouter, useRouterState } from "@tanstack/react-router";
-import { BarChart3, ClipboardList, FileSpreadsheet, Truck, type LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  Bot,
+  ClipboardList,
+  FileSpreadsheet,
+  Truck,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect } from "react";
 
 import {
@@ -133,7 +140,12 @@ function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarNavItem to="/" label="Tablero Comercial" icon={BarChart3} active={pathname === "/"} />
+              <SidebarNavItem
+                to="/"
+                label="Tablero Comercial"
+                icon={BarChart3}
+                active={pathname === "/"}
+              />
               <SidebarNavItem
                 to="/carga"
                 label="Cargar Excel"
@@ -145,6 +157,12 @@ function AppSidebar() {
                 label="Ventas"
                 icon={ClipboardList}
                 active={pathname.startsWith("/ventas")}
+              />
+              <SidebarNavItem
+                to="/chat"
+                label="Asistente IA"
+                icon={Bot}
+                active={pathname.startsWith("/chat")}
               />
             </SidebarMenu>
           </SidebarGroupContent>
@@ -163,7 +181,6 @@ function AppSidebar() {
         </div>
       </div>
     </Sidebar>
-
   );
 }
 
@@ -173,7 +190,7 @@ function SidebarNavItem({
   icon: Icon,
   active,
 }: {
-  to: "/" | "/carga" | "/ventas";
+  to: "/" | "/carga" | "/ventas" | "/chat";
   label: string;
   icon: LucideIcon;
   active: boolean;

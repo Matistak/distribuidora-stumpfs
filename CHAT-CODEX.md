@@ -275,176 +275,158 @@ de T3 Code.
 
 ### Etapa 0: Decisiones previas
 
-Objetivo: dejar definida la base de la integracion.
+- [x] Objetivo: dejar definida la base de la integracion.
+  - [x] Confirmar que la aplicacion seguira siendo local y de un solo usuario.
+  - [x] Confirmar que Codex CLI estara instalado en el equipo.
+  - [x] Ejecutar `codex login` y verificar `codex login status`.
+  - [x] Resolver la contradiccion entre SQLite documentado y PostgreSQL declarado en
+    `distribuidora-backend/prisma/schema.prisma`.
+  - [x] Mantener el backend local escuchando en `127.0.0.1`.
+  - [x] Elegir si el historial sera propiedad de Codex o tambien de la aplicacion.
 
-Tareas:
-
-- Confirmar que la aplicacion seguira siendo local y de un solo usuario.
-- Confirmar que Codex CLI estara instalado en el equipo.
-- Ejecutar `codex login` y verificar `codex login status`.
-- Resolver la contradiccion entre SQLite documentado y PostgreSQL declarado en
-  `distribuidora-backend/prisma/schema.prisma`.
-- Mantener el backend local escuchando en `127.0.0.1`.
-- Elegir si el historial sera propiedad de Codex o tambien de la aplicacion.
-
-Criterio de finalizacion: la base de datos, el modo de autenticacion y el
-transporte local estan definidos.
+  > **Comentario (10/08/2026):** todas las decisiones cerradas. La contradiccion
+  > SQLite/PostgreSQL se resolvio a favor de SQLite (la mencion de PostgreSQL era
+  > un error del documento). Detalle por tarea en la tabla de
+  > [Fase 0](#fase-0---decisiones-tomadas). Criterio cumplido: base, autenticacion
+  > y transporte local definidos.
 
 ### Etapa 1: Prueba de Codex local
 
-Objetivo: demostrar que el backend puede usar la cuenta del usuario.
+- [x] Objetivo: demostrar que el backend puede usar la cuenta del usuario.
+  - [x] Detectar la instalacion de `codex`.
+  - [x] Iniciar `codex app-server` mediante `stdio`.
+  - [x] Implementar `initialize` e `initialized`.
+  - [x] Ejecutar `account/read`.
+  - [x] Devolver un error accionable cuando la cuenta no este autenticada.
+  - [x] Cerrar y reiniciar el proceso de forma controlada.
 
-Tareas:
-
-- Detectar la instalacion de `codex`.
-- Iniciar `codex app-server` mediante `stdio`.
-- Implementar `initialize` e `initialized`.
-- Ejecutar `account/read`.
-- Devolver un error accionable cuando la cuenta no este autenticada.
-- Cerrar y reiniciar el proceso de forma controlada.
-
-Criterio de finalizacion: Fastify puede iniciar Codex y confirmar que la cuenta
-esta disponible sin exponer credenciales.
+  > **Comentario (10/08/2026):** implementado en `distribuidora-backend/src/chat/`
+  > (`jsonrpc.ts` + `codexService.ts`) con rutas `GET /api/chat/status` y
+  > `POST /api/chat/restart`. Verificado en vivo: autenticado, sin autenticar
+  > (CODEX_HOME vacio) y sin instalar. Criterio cumplido: Fastify inicia Codex y
+  > confirma la cuenta sin exponer credenciales. Detalle en [Fase 1](#fase-1---prueba-de-codex-local).
 
 ### Etapa 2: Cliente minimo de JSON-RPC
 
-Objetivo: encapsular la comunicacion con `app-server`.
+- [x] Objetivo: encapsular la comunicacion con `app-server`.
+  - [x] Crear un modulo de proceso Codex.
+  - [x] Escribir mensajes JSONL en stdin.
+  - [x] Leer respuestas y notificaciones desde stdout.
+  - [x] Correlacionar respuestas mediante `id`.
+  - [x] Publicar las notificaciones de cada thread.
+  - [x] Manejar desconexion, timeout y proceso terminado.
+  - [x] Decidir si se adapta `effect-codex-app-server` o se crea un cliente simple
+    en TypeScript.
 
-Tareas:
-
-- Crear un modulo de proceso Codex.
-- Escribir mensajes JSONL en stdin.
-- Leer respuestas y notificaciones desde stdout.
-- Correlacionar respuestas mediante `id`.
-- Publicar las notificaciones de cada thread.
-- Manejar desconexion, timeout y proceso terminado.
-- Decidir si se adapta `effect-codex-app-server` o se crea un cliente simple
-  en TypeScript.
-
-Criterio de finalizacion: existe una interfaz interna pequena para enviar
-requests y suscribirse a eventos de Codex.
+  Criterio de finalizacion: existe una interfaz interna pequena para enviar
+  requests y suscribirse a eventos de Codex.
 
 ### Etapa 3: Modelos disponibles
 
-Objetivo: permitir elegir el modelo desde la aplicacion.
+- [x] Objetivo: permitir elegir el modelo desde la aplicacion.
+  - [x] Implementar `model/list`.
+  - [x] Crear `GET /api/chat/models`.
+  - [x] Mostrar un selector de modelos en React.
+  - [x] Validar el modelo en el backend.
+  - [x] Definir un modelo por defecto.
 
-Tareas:
+  Criterio de finalizacion: el usuario puede seleccionar un modelo valido antes
+  de iniciar una conversacion.
 
-- Implementar `model/list`.
-- Crear `GET /api/chat/models`.
-- Mostrar un selector de modelos en React.
-- Validar el modelo en el backend.
-- Definir un modelo por defecto.
-
-Criterio de finalizacion: el usuario puede seleccionar un modelo valido antes
-de iniciar una conversacion.
+  > **Comentario (10/08/2026):** implementado. `GET /api/chat/models` en
+  > `distribuidora-backend/src/routes/chat.ts` devuelve modelos visibles,
+  > `defaultModel` y validacion opcional via `?model=`; la ruta `/chat` en el
+  > frontend muestra el selector con persistencia en `localStorage`. Detalle
+  > en [Fase 3](#fase-3---modelos-disponibles).
 
 ### Etapa 4: Conversaciones e historial
 
-Objetivo: crear, listar y continuar chats.
+- [ ] Objetivo: crear, listar y continuar chats.
+  - [ ] Implementar `thread/start`.
+  - [ ] Implementar `thread/list` o una tabla local de conversaciones.
+  - [ ] Implementar `thread/read`.
+  - [ ] Implementar `thread/resume`.
+  - [ ] Asociar `codexThreadId` con el identificador local.
+  - [ ] Agregar nombres y fechas de conversacion.
+  - [ ] Definir archivado o eliminacion como funcionalidad posterior.
 
-Tareas:
-
-- Implementar `thread/start`.
-- Implementar `thread/list` o una tabla local de conversaciones.
-- Implementar `thread/read`.
-- Implementar `thread/resume`.
-- Asociar `codexThreadId` con el identificador local.
-- Agregar nombres y fechas de conversacion.
-- Definir archivado o eliminacion como funcionalidad posterior.
-
-Criterio de finalizacion: el usuario puede cerrar la aplicacion, volver a
-abrirla y continuar una conversacion anterior.
+  Criterio de finalizacion: el usuario puede cerrar la aplicacion, volver a
+  abrirla y continuar una conversacion anterior.
 
 ### Etapa 5: Envio y streaming
 
-Objetivo: mostrar respuestas como un chat moderno.
+- [ ] Objetivo: mostrar respuestas como un chat moderno.
+  - [ ] Implementar `turn/start`.
+  - [ ] Escuchar `item/agentMessage/delta`.
+  - [ ] Escuchar `turn/completed`.
+  - [ ] Traducir eventos de Codex a eventos SSE propios.
+  - [ ] Crear `POST /api/chat/conversations/:id/messages`.
+  - [ ] Mostrar estado de carga, respuesta parcial y errores.
+  - [ ] Agregar cancelacion con `turn/interrupt` si resulta necesaria.
 
-Tareas:
-
-- Implementar `turn/start`.
-- Escuchar `item/agentMessage/delta`.
-- Escuchar `turn/completed`.
-- Traducir eventos de Codex a eventos SSE propios.
-- Crear `POST /api/chat/conversations/:id/messages`.
-- Mostrar estado de carga, respuesta parcial y errores.
-- Agregar cancelacion con `turn/interrupt` si resulta necesaria.
-
-Criterio de finalizacion: el usuario envia una pregunta y ve la respuesta
-progresivamente sin esperar a que termine todo el turno.
+  Criterio de finalizacion: el usuario envia una pregunta y ve la respuesta
+  progresivamente sin esperar a que termine todo el turno.
 
 ### Etapa 6: MCP de ventas
 
-Objetivo: permitir que Codex responda usando la base de datos real.
+- [ ] Objetivo: permitir que Codex responda usando la base de datos real.
+  - [ ] Crear el proceso MCP local.
+  - [ ] Reutilizar los servicios de consulta de ventas del backend.
+  - [ ] Definir schemas para argumentos de herramientas.
+  - [ ] Implementar inicialmente una herramienta de resumen.
+  - [ ] Agregar consultas por fechas, vendedor, producto y ciudad.
+  - [ ] Limitar resultados y tiempos de ejecucion.
+  - [ ] Configurar `app-server` para usar el MCP por `stdio`.
+  - [ ] Probar preguntas ambiguas y filtros invalidos.
 
-Tareas:
-
-- Crear el proceso MCP local.
-- Reutilizar los servicios de consulta de ventas del backend.
-- Definir schemas para argumentos de herramientas.
-- Implementar inicialmente una herramienta de resumen.
-- Agregar consultas por fechas, vendedor, producto y ciudad.
-- Limitar resultados y tiempos de ejecucion.
-- Configurar `app-server` para usar el MCP por `stdio`.
-- Probar preguntas ambiguas y filtros invalidos.
-
-Criterio de finalizacion: Codex puede responder preguntas comerciales usando
-agregados reales y no inventa datos cuando una consulta no devuelve resultados.
+  Criterio de finalizacion: Codex puede responder preguntas comerciales usando
+  agregados reales y no inventa datos cuando una consulta no devuelve resultados.
 
 ### Etapa 7: Interfaz del chat
 
-Objetivo: integrar el chat en la aplicacion existente.
+- [ ] Objetivo: integrar el chat en la aplicacion existente.
+  - [ ] Crear `src/components/chat/ChatPanel.tsx`.
+  - [ ] Crear una ruta `/chat` o un panel lateral global.
+  - [ ] Mostrar conversaciones anteriores.
+  - [ ] Mostrar selector de modelo.
+  - [ ] Mostrar mensajes del usuario y del asistente.
+  - [ ] Mostrar consultas de herramientas de forma resumida.
+  - [ ] Agregar estados vacio, cargando, sin autenticacion y sin backend.
+  - [ ] Adaptar el layout de `src/routes/__root.tsx`.
 
-Tareas:
-
-- Crear `src/components/chat/ChatPanel.tsx`.
-- Crear una ruta `/chat` o un panel lateral global.
-- Mostrar conversaciones anteriores.
-- Mostrar selector de modelo.
-- Mostrar mensajes del usuario y del asistente.
-- Mostrar consultas de herramientas de forma resumida.
-- Agregar estados vacio, cargando, sin autenticacion y sin backend.
-- Adaptar el layout de `src/routes/__root.tsx`.
-
-Criterio de finalizacion: el usuario puede usar el chat sin abrir una terminal
-ni interactuar directamente con Codex.
+  Criterio de finalizacion: el usuario puede usar el chat sin abrir una terminal
+  ni interactuar directamente con Codex.
 
 ### Etapa 8: Persistencia y empaquetado
 
-Objetivo: que la funcionalidad sobreviva al cierre y al instalador Tauri.
+- [ ] Objetivo: que la funcionalidad sobreviva al cierre y al instalador Tauri.
+  - [ ] Persistir conversaciones y configuracion en el directorio de datos de la
+    aplicacion.
+  - [ ] No usar `src-tauri/resources` como base activa.
+  - [ ] Resolver la instalacion o deteccion de Codex CLI.
+  - [ ] Verificar rutas de `CODEX_HOME` en desarrollo y produccion.
+  - [ ] Agregar backups si el historial propio se persiste.
+  - [ ] Probar actualizaciones sin perder conversaciones.
 
-Tareas:
-
-- Persistir conversaciones y configuracion en el directorio de datos de la
-  aplicacion.
-- No usar `src-tauri/resources` como base activa.
-- Resolver la instalacion o deteccion de Codex CLI.
-- Verificar rutas de `CODEX_HOME` en desarrollo y produccion.
-- Agregar backups si el historial propio se persiste.
-- Probar actualizaciones sin perder conversaciones.
-
-Criterio de finalizacion: una aplicacion empaquetada puede iniciar el backend,
-encontrar Codex y conservar el historial local.
+  Criterio de finalizacion: una aplicacion empaquetada puede iniciar el backend,
+  encontrar Codex y conservar el historial local.
 
 ### Etapa 9: Seguridad y pruebas
 
-Objetivo: cerrar los riesgos antes de usarlo como funcionalidad normal.
+- [ ] Objetivo: cerrar los riesgos antes de usarlo como funcionalidad normal.
+  - [ ] Confirmar que Fastify escuche solo en localhost.
+  - [ ] No permitir SQL arbitrario.
+  - [ ] Mantener todas las herramientas de ventas en modo lectura.
+  - [ ] Validar limites de fechas, filas y tiempos.
+  - [ ] Probar campos de ventas que contengan texto malicioso o instrucciones.
+  - [ ] Evitar enviar datos personales que no sean necesarios.
+  - [ ] Probar falta de autenticacion, logout, expiracion y renovacion de sesion.
+  - [ ] Probar cierre inesperado de `app-server`.
+  - [ ] Probar perdida de red y respuestas incompletas.
+  - [ ] Ejecutar pruebas con bases pequenas y grandes.
 
-Tareas:
-
-- Confirmar que Fastify escuche solo en localhost.
-- No permitir SQL arbitrario.
-- Mantener todas las herramientas de ventas en modo lectura.
-- Validar limites de fechas, filas y tiempos.
-- Probar campos de ventas que contengan texto malicioso o instrucciones.
-- Evitar enviar datos personales que no sean necesarios.
-- Probar falta de autenticacion, logout, expiracion y renovacion de sesion.
-- Probar cierre inesperado de `app-server`.
-- Probar perdida de red y respuestas incompletas.
-- Ejecutar pruebas con bases pequenas y grandes.
-
-Criterio de finalizacion: un error de Codex no puede modificar la base ni
-dejar expuestos los tokens del usuario.
+  Criterio de finalizacion: un error de Codex no puede modificar la base ni
+  dejar expuestos los tokens del usuario.
 
 ## Resultado esperado del MVP
 
@@ -554,6 +536,114 @@ Nunca se devuelven ni registran tokens ni `~/.codex/auth.json`.
 - Cerrar la aplicacion y confirmar que `codex app-server` tambien termina.
 - Ejecutar `npm run dev` en `distribuidora-backend` y consultar
   `GET /api/chat/status` desde la aplicacion.
+
+## Fase 2 - Cliente minimo de JSON-RPC
+
+Estado al 10/08/2026. Existe una interfaz interna pequena para enviar requests
+y suscribirse a eventos de Codex. Criterio de finalizacion cumplido.
+
+### Decision: cliente simple en TypeScript
+
+Se evaluo adaptar `effect-codex-app-server` (licencia MIT) y se descarto:
+
+| Criterio | `effect-codex-app-server` | Cliente propio |
+| --- | --- | --- |
+| Dependencias | Arrastra Effect completo (Context, Layer, Stream, Schema) | Cero dependencias nuevas (solo `node:child_process`) |
+| Superficie usada | Menos del 10% del protocolo (threads, turns, modelos, deltas) | Tipos recortados a ese subconjunto |
+| Paridad de tipos | Tipos de schema generado (revisar cada actualizacion de Codex) | Tipos propios en `codexProtocol.ts` |
+| Mantenimiento | Copia de codigo de t3code dentro de este repo | Un archivo de tipos + transporte ya probado |
+
+El transporte (`jsonrpc.ts`) ya cubria el 80% de la etapa (JSONL en stdin,
+correlacion por `id`, timeout, cierre SIGTERM/SIGKILL). Faltaba la capa tipada
+y la publicacion de eventos por thread, que se agregaron en esta fase.
+
+### Implementacion
+
+Archivos en `distribuidora-backend`:
+
+- `src/chat/codexProtocol.ts` (nuevo) - protocolo tipado del subconjunto
+  usado: tipos de params/respuestas de `model/list`, `thread/start`,
+  `thread/resume`, `thread/list`, `thread/read`, `turn/start`,
+  `turn/interrupt` y notificaciones `turn/started`, `turn/completed`,
+  `item/agentMessage/delta`, `item/started`, `item/completed`. Los tipos
+  siguen el schema generado del app-server (verificado contra
+  `t3code/packages/effect-codex-app-server/src/_generated/schema.gen.ts`).
+- `src/chat/codexService.ts` (ampliado) - bus de eventos `onEvent` y
+  `onThreadEvent(threadId, ...)` que decodifica notificaciones JSON-RPC en
+  eventos tipados, mas helpers RPC: `listModels`, `startThread`,
+  `resumeThread`, `listThreads`, `readThread`, `startTurn`, `interruptTurn`.
+
+### Comportamiento verificado en vivo
+
+| Paso | Resultado |
+| --- | --- |
+| `model/list` | 4 modelos visibles (`gpt-5.6-terra` default, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`) |
+| `thread/start` con `sandbox: "read-only"` | Thread creado con su `id` |
+| `turn/start` | Turno iniciado; respuesta "Hola" recibida como deltas |
+| Eventos por thread | `turn/started`, `item/started`, `item/completed`, `item/agentMessage/delta`, `turn/completed` entregados al suscriptor de `onThreadEvent` |
+| `thread/list` + `thread/read` | El thread recien creado aparece con 1 turno |
+
+### Notas
+
+- El sandbox es un string (`"read-only"`), no un objeto: corregido tras el
+  primer error `-32600` en vivo.
+- Los helpers de `turn/*` y `thread/*` son envolturas delgadas sin logica de
+  negocio; las validaciones de modelos y el mapeo a la base local llegan en
+  las Etapas 3 y 4.
+- Las notificaciones desconocidas (hooks, MCP, rate limits) se registran pero
+  no se publican: la app solo consume el subconjunto del contrato.
+
+## Fase 3 - Modelos disponibles
+
+Estado al 10/08/2026. El usuario puede elegir un modelo valido desde la
+aplicacion antes de iniciar una conversacion. Criterio de finalizacion
+cumplido.
+
+### Implementacion
+
+Backend (`distribuidora-backend`):
+
+- `src/chat/codexService.ts` (ampliado) - helpers de Etapa 3:
+  - `visibleModels()`: `model/list` filtrado a `hidden === false`.
+  - `defaultModel()`: el modelo con `isDefault: true`, o el primero visible.
+  - `validateModel(modelId)`: confirma que el modelo exista y este visible.
+- `src/routes/chat.ts` (ampliado) - `GET /api/chat/models`:
+  - Devuelve `{ models: [{ id, displayName, description }], defaultModel, valid }`.
+  - `valid` valida el modelo recibido via `?model=` (el frontend envia solo
+    el identificador, nunca parametros arbitrarios).
+  - Errores accionables: 401 si no hay cuenta, 503 si Codex no esta instalado.
+
+Frontend (`distribuidora-front`):
+
+- `src/lib/chat.ts` (nuevo) - contrato pequeno y estable del chat: tipos
+  `ChatModel`, `ChatStatus` y funciones `obtenerModelosChat`,
+  `obtenerEstadoChat`, `reiniciarCodex`.
+- `src/routes/chat.tsx` (nuevo) - pagina `/chat` con estados:
+  - Sin backend: explica que el chat requiere el sidecar.
+  - Cargando, error con reintento y reinicio de Codex.
+  - Codex no instalado: instrucciones `npm install -g @openai/codex`.
+  - Codex sin autenticar: instrucciones `codex login` + `codex login status`.
+  - Cuenta conectada: selector de modelos con descripcion del modelo actual.
+- El modelo elegido se persiste en `localStorage` (`chat.selectedModel`) y se
+  reutilizara en Etapa 4 al crear conversaciones.
+- `src/routes/__root.tsx`: item "Asistente IA" en el sidebar (`/chat`).
+
+### Comportamiento verificado en vivo
+
+| Caso | Resultado |
+| --- | --- |
+| `GET /api/chat/models` | 4 modelos visibles (`gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4-mini`), `defaultModel: "gpt-5.6-terra"` |
+| `GET /api/chat/models?model=gpt-5.6-luna` | `valid: true` |
+| `GET /api/chat/models?model=no-existe` | `valid: false` |
+| Codex no instalado (`CODEX_CLI_COMMAND=codex-inexistente`) | HTTP 503 con mensaje de instalacion |
+
+### Notas
+
+- `model/list` no requiere autenticacion (devuelve modelos aunque la cuenta no
+  este conectada); la autenticacion se valida con `account/read` y la ruta
+  `/chat` bloquea el selector cuando no hay cuenta.
+- La ruta `/chat` de Etapa 3 es deliberadamente minimalista: la interfaz de
+  chat completa (mensajes, historial, streaming) llega en la Etapa 7.
 
 ## Referencias
 
