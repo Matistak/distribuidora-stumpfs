@@ -13,6 +13,7 @@ type ResumenCarga = {
   filasOmitidas: number;
   filasErrores: number;
   sinErrores: boolean;
+  errores: UploadResponse["errores"];
   detalleError?: string;
 };
 
@@ -51,6 +52,7 @@ export function UploadPanel({
           filasOmitidas: carga.filasOmitidas,
           filasErrores: carga.filasErrores,
           sinErrores: !tieneError,
+          errores: carga.errores,
           ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         });
         if (tieneError) {
@@ -72,6 +74,7 @@ export function UploadPanel({
         filasOmitidas: 0,
         filasErrores: 0,
         sinErrores: true,
+        errores: [],
       });
       toast.success(`${rows.length.toLocaleString("es-PY")} filas procesadas`);
     } catch (e) {
@@ -85,6 +88,7 @@ export function UploadPanel({
         filasOmitidas: 0,
         filasErrores: 0,
         sinErrores: false,
+        errores: [],
         detalleError,
       });
       toast.error("No se pudo leer el Excel", { description: detalleError });
@@ -167,7 +171,9 @@ function ResumenCargaView({ resumen }: { resumen: ResumenCarga }) {
           <p className="mt-1 text-xs text-muted-foreground">
             {resumen.correcta
               ? "El archivo fue procesado y ya está disponible en el tablero."
-              : "El archivo no pudo procesarse correctamente."}
+              : resumen.errores.length > 0
+                ? "El archivo fue procesado, pero algunas filas no se pudieron importar."
+                : "El archivo no pudo procesarse correctamente."}
           </p>
         </div>
       </div>
@@ -199,6 +205,22 @@ function ResumenCargaView({ resumen }: { resumen: ResumenCarga }) {
           positivo={resumen.filasErrores === 0}
         />
       </dl>
+
+      {resumen.errores.length > 0 ? (
+        <details className="mt-3 rounded-lg border border-destructive/20 bg-background/60" open>
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-destructive">
+            Ver filas con errores ({resumen.errores.length.toLocaleString("es-PY")})
+          </summary>
+          <ul className="max-h-64 space-y-1 overflow-y-auto border-t border-destructive/10 px-3 py-2 text-xs">
+            {resumen.errores.map((error) => (
+              <li key={error.fila} className="flex gap-2">
+                <span className="shrink-0 font-semibold">Fila {error.fila}:</span>
+                <span className="text-muted-foreground">{error.motivo}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       {resumen.detalleError ? (
         <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">

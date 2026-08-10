@@ -98,7 +98,12 @@ export type UploadResponse = {
   filasNuevas: number;
   filasOmitidas: number;
   filasErrores: number;
+  errores: UploadRowError[];
   estado: string;
+};
+export type UploadRowError = {
+  fila: number;
+  motivo: string;
 };
 export type UploadHistorial = {
   id: number;

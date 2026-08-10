@@ -281,7 +281,7 @@ function Dashboard() {
                 </Panel>
               </div>
 
-              <div className="grid gap-4 @5xl:grid-cols-3">
+              <div className="grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
                 <Panel titulo="Ventas por canal">
                   <TablaRanking data={d.ventasPorCanal} etiqueta="Canal" />
                 </Panel>
