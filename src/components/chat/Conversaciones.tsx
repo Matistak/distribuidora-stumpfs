@@ -41,7 +41,7 @@ export function ConversacionesPanel({
         </Button>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 max-h-[45vh] space-y-2 overflow-y-auto lg:max-h-[calc(100vh-420px)]">
         {cargando && (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" /> Cargando conversaciones...

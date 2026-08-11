@@ -45,13 +45,36 @@ export type ChatConversacion = {
   updatedAt: string;
 };
 
+/** Consulta a una herramienta (MCP de ventas) resumida para mostrar en la UI. */
+export type ChatToolCall = {
+  server: string;
+  tool: string;
+  status: "inProgress" | "completed" | "failed";
+  error?: string | null;
+};
+
 export type ChatMensaje = {
   id: string;
   role: "user" | "assistant";
   text: string;
   /** Timestamp en ms del turno al que pertenece el item, si se conoce. */
   createdAt?: number;
+  /** Consultas a herramientas del turno, en orden de ejecución. */
+  toolCalls?: ChatToolCall[];
 };
+
+/** Nombres legibles de las herramientas del MCP de ventas (Etapa 7). */
+const NOMBRES_HERRAMIENTAS: Record<string, string> = {
+  resumen_ventas: "Resumen de ventas",
+  ventas_por_periodo: "Ventas por período",
+  ventas_por_vendedor: "Ventas por vendedor",
+  ventas_por_producto: "Ventas por producto",
+  ventas_por_ciudad: "Ventas por ciudad",
+  comparar_periodos: "Comparar períodos",
+};
+
+/** Nombre legible de una herramienta del MCP de ventas (con fallback). */
+export const nombreHerramienta = (tool: string): string => NOMBRES_HERRAMIENTAS[tool] ?? tool;
 
 export type ChatConversacionDetalle = {
   conversation: ChatConversacion;
@@ -105,6 +128,7 @@ export const reanudarConversacionChat = (id: number, model?: string) =>
 export type ChatSseEvent =
   | { event: "message.start"; data: { turnId: string | null } }
   | { event: "message.delta"; data: { text: string } }
+  | { event: "message.tool_call"; data: { server: string; tool: string } }
   | { event: "message.completed"; data: { turnId: string } }
   | { event: "message.error"; data: { message: string } };
 
@@ -154,6 +178,9 @@ export async function enviarMensajeChat(
         break;
       case "message.delta":
         onEvent({ event, data: parsed as { text: string } });
+        break;
+      case "message.tool_call":
+        onEvent({ event, data: parsed as { server: string; tool: string } });
         break;
       case "message.completed":
         onEvent({ event, data: parsed as { turnId: string } });

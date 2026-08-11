@@ -3,21 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bot, Loader2, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ConversacionesPanel } from "@/components/chat/Conversaciones";
-import { HistorialMensajes } from "@/components/chat/Historial";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { backendConectado, mensajeError } from "@/lib/api";
 import {
   CHAT_MODEL_KEY,
   cancelarTurnoChat,
   crearConversacionChat,
   enviarMensajeChat,
+  nombreHerramienta,
   obtenerConversacionChat,
   obtenerConversacionesChat,
   obtenerEstadoChat,
@@ -62,6 +55,8 @@ function ChatPage() {
   const [enviando, setEnviando] = useState(false);
   const [turnoId, setTurnoId] = useState<string | null>(null);
   const [errorEnvio, setErrorEnvio] = useState<string>();
+  // Etapa 7: consultas a herramientas (MCP de ventas) vistas en vivo.
+  const [herramientasEnCurso, setHerramientasEnCurso] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const canceladoRef = useRef(false);
   // Ref del id seleccionado: el refresco post-turno usa el id vigente en el
@@ -162,6 +157,7 @@ function ChatPage() {
     setEnviando(false);
     setTurnoId(null);
     setErrorEnvio(undefined);
+    setHerramientasEnCurso([]);
   }, [seleccionadoId]);
 
   /**
@@ -202,6 +198,7 @@ function ChatPage() {
     setEnviando(true);
     setTurnoId(null);
     setErrorEnvio(undefined);
+    setHerramientasEnCurso([]);
 
     let acumulado = "";
     let errorDelStream: string | undefined;
@@ -216,6 +213,9 @@ function ChatPage() {
           setMensajes((prev) =>
             prev.map((m) => (m.id === "local-asistente" ? { ...m, text: acumulado } : m)),
           );
+          break;
+        case "message.tool_call":
+          setHerramientasEnCurso((prev) => [...prev, nombreHerramienta(event.data.tool)]);
           break;
         case "message.error":
           errorDelStream = event.data.message;
@@ -235,6 +235,7 @@ function ChatPage() {
       if (errorDelStream && !canceladoRef.current) setErrorEnvio(errorDelStream);
       setEnviando(false);
       setTurnoId(null);
+      setHerramientasEnCurso([]);
       abortRef.current = null;
       await refrescarConversacion(conversacionId);
     }
@@ -371,78 +372,29 @@ function ChatPage() {
             {status.installed && !status.authenticated && <InstruccionesLogin />}
 
             {status.installed && status.authenticated && (
-              <>
-                <section className="rounded-xl border border-border bg-card p-5 shadow-card">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-sm font-semibold">Modelo del asistente</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Elegí el modelo que responderá tus consultas. Las conversaciones nuevas se
-                        crearán con este modelo.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 max-w-md space-y-3">
-                    <Select
-                      {...(modeloElegido ? { value: modeloElegido } : {})}
-                      onValueChange={cambiarModelo}
-                      disabled={!modelos.length}
-                    >
-                      <SelectTrigger className="w-full text-sm">
-                        <SelectValue placeholder="Seleccioná un modelo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {modelos.map((modelo) => (
-                          <SelectItem key={modelo.id} value={modelo.id}>
-                            {modelo.displayName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {modeloActual && (
-                      <p className="text-xs text-muted-foreground">{modeloActual.description}</p>
-                    )}
-
-                    {!modelos.length && (
-                      <p className="text-xs text-muted-foreground">
-                        No hay modelos disponibles para la cuenta.
-                      </p>
-                    )}
-                  </div>
-                </section>
-
-                {conversacionesError && (
-                  <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 shadow-card">
-                    <h2 className="text-sm font-semibold text-destructive">
-                      No se pudieron cargar las conversaciones
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{conversacionesError}</p>
-                  </section>
-                )}
-
-                <ConversacionesPanel
-                  conversaciones={conversaciones}
-                  cargando={conversacionesCargando}
-                  creando={creando}
-                  seleccionadoId={seleccionadoId}
-                  onCrear={crearConversacion}
-                  onSeleccionar={seleccionarConversacion}
-                />
-
-                <HistorialMensajes
-                  detalle={detalle}
-                  cargando={detalleCargando}
-                  error={detalleError}
-                  mensajes={mensajes}
-                  enviando={enviando}
-                  turnoActivo={turnoId}
-                  errorEnvio={errorEnvio}
-                  onEnviar={enviar}
-                  onCancelar={cancelar}
-                />
-              </>
+              <ChatPanel
+                modelos={modelos}
+                modeloElegido={modeloElegido}
+                modeloActual={modeloActual}
+                onCambiarModelo={cambiarModelo}
+                conversaciones={conversaciones}
+                conversacionesCargando={conversacionesCargando}
+                conversacionesError={conversacionesError}
+                creando={creando}
+                onCrear={crearConversacion}
+                seleccionadoId={seleccionadoId}
+                onSeleccionar={seleccionarConversacion}
+                detalle={detalle}
+                detalleCargando={detalleCargando}
+                detalleError={detalleError}
+                mensajes={mensajes}
+                enviando={enviando}
+                turnoActivo={turnoId}
+                herramientasEnCurso={herramientasEnCurso}
+                errorEnvio={errorEnvio}
+                onEnviar={enviar}
+                onCancelar={cancelar}
+              />
             )}
           </>
         )}

@@ -1,14 +1,40 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, MessageCircle, Send, Square } from "lucide-react";
+import { Bot, Database, Loader2, MessageCircle, Send, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { ChatConversacionDetalle, ChatMensaje } from "@/lib/chat";
+import { nombreHerramienta, type ChatConversacionDetalle, type ChatMensaje } from "@/lib/chat";
 
 const formatearHora = new Intl.DateTimeFormat("es", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+/** Chips con las consultas a herramientas de ventas, resumidas (Etapa 7). */
+function ChipsHerramientas({
+  herramientas,
+  enVivo,
+}: {
+  /** Nombres legibles de las herramientas consultadas, en orden. */
+  herramientas: string[];
+  /** True mientras el modelo esta consultando (chip con animacion). */
+  enVivo?: boolean;
+}) {
+  return (
+    <div className={cn("mb-2 flex flex-wrap gap-1.5", enVivo && "animate-pulse")}>
+      {herramientas.map((nombre, index) => (
+        <span
+          key={`${nombre}-${index}`}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground"
+        >
+          <Database className="size-3" />
+          {nombre}
+          {enVivo ? "…" : ""}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export function HistorialMensajes({
   detalle,
@@ -17,6 +43,7 @@ export function HistorialMensajes({
   mensajes,
   enviando,
   turnoActivo,
+  herramientasEnCurso,
   errorEnvio,
   onEnviar,
   onCancelar,
@@ -28,6 +55,8 @@ export function HistorialMensajes({
   enviando: boolean;
   /** Id del turno en curso; `null` cuando no hay generacion activa. */
   turnoActivo: string | null;
+  /** Nombres legibles de las herramientas que se estan consultando en vivo. */
+  herramientasEnCurso: string[];
   errorEnvio?: string | undefined;
   onEnviar: (texto: string) => void;
   onCancelar: () => void;
@@ -79,7 +108,7 @@ export function HistorialMensajes({
   const { conversation } = detalle;
 
   return (
-    <section className="flex h-[560px] flex-col rounded-xl border border-border bg-card shadow-card">
+    <section className="flex h-[560px] min-h-0 flex-col rounded-xl border border-border bg-card shadow-card lg:h-[calc(100vh-245px)]">
       <header className="flex items-center gap-3 border-b border-border px-5 py-4">
         <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
           <Bot className="size-4" />
@@ -99,6 +128,11 @@ export function HistorialMensajes({
 
         {mensajes.map((mensaje, index) => {
           const esUltimo = index === mensajes.length - 1;
+          const herramientas =
+            mensaje.toolCalls?.map((call) => {
+              const nombre = nombreHerramienta(call.tool);
+              return call.status === "failed" ? `${nombre} · falló` : nombre;
+            }) ?? [];
           return (
             <div
               key={mensaje.id}
@@ -109,12 +143,23 @@ export function HistorialMensajes({
                   : "mr-auto rounded-bl-sm bg-muted",
               )}
             >
-              <p>
-                {mensaje.text}
-                {mensaje.role === "assistant" && esUltimo && enviando && (
-                  <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-current align-middle" />
+              {mensaje.role === "assistant" && herramientas.length > 0 && (
+                <ChipsHerramientas herramientas={herramientas} />
+              )}
+              {mensaje.role === "assistant" &&
+                esUltimo &&
+                enviando &&
+                herramientasEnCurso.length > 0 && (
+                  <ChipsHerramientas herramientas={herramientasEnCurso} enVivo />
                 )}
-              </p>
+              {mensaje.text && (
+                <p>
+                  {mensaje.text}
+                  {mensaje.role === "assistant" && esUltimo && enviando && (
+                    <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-current align-middle" />
+                  )}
+                </p>
+              )}
               {typeof mensaje.createdAt === "number" && (
                 <p
                   className={cn(

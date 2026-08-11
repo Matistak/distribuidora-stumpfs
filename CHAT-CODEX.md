@@ -384,15 +384,15 @@ de T3 Code.
 
 ### Etapa 7: Interfaz del chat
 
-- [ ] Objetivo: integrar el chat en la aplicacion existente.
-  - [ ] Crear `src/components/chat/ChatPanel.tsx`.
-  - [ ] Crear una ruta `/chat` o un panel lateral global.
-  - [ ] Mostrar conversaciones anteriores.
-  - [ ] Mostrar selector de modelo.
-  - [ ] Mostrar mensajes del usuario y del asistente.
-  - [ ] Mostrar consultas de herramientas de forma resumida.
-  - [ ] Agregar estados vacio, cargando, sin autenticacion y sin backend.
-  - [ ] Adaptar el layout de `src/routes/__root.tsx`.
+- [x] Objetivo: integrar el chat en la aplicacion existente.
+  - [x] Crear `src/components/chat/ChatPanel.tsx`.
+  - [x] Crear una ruta `/chat` o un panel lateral global.
+  - [x] Mostrar conversaciones anteriores.
+  - [x] Mostrar selector de modelo.
+  - [x] Mostrar mensajes del usuario y del asistente.
+  - [x] Mostrar consultas de herramientas de forma resumida.
+  - [x] Agregar estados vacio, cargando, sin autenticacion y sin backend.
+  - [x] Adaptar el layout de `src/routes/__root.tsx`.
 
   Criterio de finalizacion: el usuario puede usar el chat sin abrir una terminal
   ni interactuar directamente con Codex.
@@ -969,6 +969,92 @@ el flujo.
 - Las respuestas de las herramientas son texto con estructura simple para el
   modelo; el frontend no necesita conocer el MCP (Etapa 7 muestra las tool
   calls resumidas si se desea).
+
+## Fase 7 - Interfaz del chat
+
+Estado al 10/08/2026. El chat queda integrado en la aplicacion como un panel
+de dos columnas: el usuario puede crear y continuar conversaciones, elegir
+modelo, ver las consultas de herramientas (MCP de ventas) resumidas y usar el
+chat sin abrir una terminal. Criterio de finalizacion cumplido.
+
+### Implementacion
+
+Backend (`distribuidora-backend`):
+
+- `src/chat/codexProtocol.ts` - el item `mcpToolCall` se agrega al union de
+  `CodexThreadItem` (`server`, `tool`, `status`, `error`). Los tipos siguen el
+  schema generado del app-server (`McpToolCallStatus`: inProgress/completed/
+  failed).
+- `src/chat/conversationService.ts` - `ChatMensaje` gana `toolCalls?` y
+  `turnToMessages` las mapea: cada tool call se adjunta a la respuesta del
+  asistente del mismo turno (la burbuja se abre con las consultas y se
+  completa con el texto final si el texto llega despues). No se exponen los
+  `arguments` ni los `result` de las herramientas (solo nombre, servidor y
+  estado).
+- `src/chat/chatStreamService.ts` - nuevo evento SSE `message.tool_call`
+  (`{ server, tool }`), emitido desde `item/started` cuando el item es un
+  `mcpToolCall`. Igual que los deltas, las tool calls que llegan antes del
+  arranque del turno se encolan y se emiten despues de `message.start`.
+
+Contrato SSE de la aplicacion (Etapa 5 + Etapa 7):
+
+```text
+message.start     — { turnId } al arrancar el turno (id para cancelar)
+message.delta     — { text } cada fragmento de texto del asistente
+message.tool_call — { server, tool } cuando el asistente consulta una herramienta
+message.completed — { turnId } el turno termino sin errores
+message.error     — { message } fallo, turno failed o generacion cancelada
+```
+
+Frontend (`distribuidora-front`):
+
+- `src/components/chat/ChatPanel.tsx` (nuevo) - panel principal del chat con
+  layout de dos columnas:
+  - Columna izquierda (sticky en desktop): selector de modelo con descripcion
+    y `ConversacionesPanel` con la lista scrollable y el boton "Nueva
+    conversación".
+  - Columna derecha: `HistorialMensajes` (mensajes + editor), que ocupa la
+    altura del viewport en desktop.
+  - `conversacionesError` se muestra dentro del panel lateral.
+- `src/components/chat/Historial.tsx` - burbujas del asistente con chips de
+  herramientas resumidas (icono de base de datos + nombre legible, p. ej.
+  "Ventas por vendedor"; "· falló" si la consulta fallo). Mientras el turno
+  esta en curso, los chips en vivo muestran las consultas con animacion de
+  "consultando…" encima del texto que se va acumulando.
+- `src/components/chat/Conversaciones.tsx` - la lista queda scrollable dentro
+  del panel lateral (`max-h-[45vh]`, y en desktop `calc(100vh - 420px)`).
+- `src/lib/chat.ts` - `ChatMensaje.toolCalls`, evento `message.tool_call` en
+  `ChatSseEvent` y en el parseo del SSE, y `nombreHerramienta()` que traduce
+  los nombres de las herramientas del MCP de ventas a texto legible.
+- `src/routes/chat.tsx` - el bloque autenticado ahora renderiza `ChatPanel`;
+  en `onEvent` acumula `herramientasEnCurso` (nombres legibles) que se pasan
+  al historial y se limpian al terminar el turno o cambiar de conversacion.
+- Script de desarrollo: `scripts/test-tool-calls.ts` en el backend (turno
+  real que verifica `message.tool_call` y las `toolCalls` del historial;
+  parametrizable con `CODEX_TEST_MODEL` y `CODEX_TEST_PREGUNTA`).
+
+### Comportamiento verificado en vivo
+
+| Caso | Resultado |
+| --- | --- |
+| Turno con pregunta comercial | SSE: `message.start` -> deltas -> `message.tool_call` (`ventas` / `resumen_ventas`) -> deltas -> `message.completed` |
+| `thread/read` tras el turno | El mensaje del asistente incluye `toolCalls: [{ server: "ventas", tool: "resumen_ventas", status: "completed" }]` con su texto |
+| Tool call antes del arranque | Se encola y se emite despues de `message.start` (misma logica que los deltas) |
+| Herramienta fallida | `status: "failed"` en el historial; el chip muestra "· falló" |
+| `tsc` backend y `tsc --noEmit` + `vite build` frontend | Sin errores; `ChatPanel` incluido en el bundle |
+
+### Notas
+
+- El contrato SSE de la aplicacion crece a 5 eventos: el frontend no conoce el
+  protocolo de Codex; `message.tool_call` es la unica traduccion nueva y es
+  opcional de consumir (los clientes viejos ignoran el evento).
+- Las tool calls se muestran resumidas a proposito: nombre de la herramienta
+  y estado. Los argumentos y resultados de las consultas (que pueden contener
+  datos de ventas) no se exponen al frontend; el texto del asistente es la
+  respuesta autorizada.
+- `scripts/test-tool-calls.ts` no importa `src/server.js` (levantaria Fastify
+  y el proceso nunca terminaria); crea su propio `PrismaClient` con la URL de
+  la base de desarrollo.
 
 ## Referencias
 
