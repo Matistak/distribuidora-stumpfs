@@ -1,5 +1,12 @@
 import { Link, Outlet, createRootRoute, useRouter, useRouterState } from "@tanstack/react-router";
-import { BarChart3, ClipboardList, FileSpreadsheet, Truck, type LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  Bot,
+  ClipboardList,
+  FileSpreadsheet,
+  Truck,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect } from "react";
 
 import {
@@ -17,6 +24,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { APP_MODE } from "@/lib/api";
 import { UploadStateProvider } from "@/lib/upload-state";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -133,7 +141,12 @@ function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarNavItem to="/" label="Tablero Comercial" icon={BarChart3} active={pathname === "/"} />
+              <SidebarNavItem
+                to="/"
+                label="Tablero Comercial"
+                icon={BarChart3}
+                active={pathname === "/"}
+              />
               <SidebarNavItem
                 to="/carga"
                 label="Cargar Excel"
@@ -146,6 +159,14 @@ function AppSidebar() {
                 icon={ClipboardList}
                 active={pathname.startsWith("/ventas")}
               />
+              {APP_MODE === "back" && (
+                <SidebarNavItem
+                  to="/chat"
+                  label="Asistente IA"
+                  icon={Bot}
+                  active={pathname.startsWith("/chat")}
+                />
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -163,7 +184,6 @@ function AppSidebar() {
         </div>
       </div>
     </Sidebar>
-
   );
 }
 
@@ -173,7 +193,7 @@ function SidebarNavItem({
   icon: Icon,
   active,
 }: {
-  to: "/" | "/carga" | "/ventas";
+  to: "/" | "/carga" | "/ventas" | "/chat";
   label: string;
   icon: LucideIcon;
   active: boolean;

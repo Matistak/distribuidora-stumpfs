@@ -19,6 +19,8 @@ dist-ssr
 
 # Local environment files
 .env
+.env.*
+!.env.example
 .env.*.local
 
 # Tauri generated files
