@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -52,29 +52,44 @@ function Dashboard() {
   const [dashboardBackend, setDashboardBackend] = useState<DashboardData | null>(null);
   const [opcionesBackend, setOpcionesBackend] = useState<OpcionesFiltro>(OPCIONES_VACIAS);
   const [cargandoBackend, setCargandoBackend] = useState(backend);
+  // El primer arranque del sidecar puede tardar en estar listo; la primera
+  // carga se reintenta para no mostrar la app vacia.
+  const primeraCargaRef = useRef(true);
   useEffect(() => {
     if (!backend) return;
 
     let activo = true;
+    const intentos = primeraCargaRef.current ? 8 : 1;
     setCargandoBackend(true);
 
-    obtenerDashboard(filtros)
-      .then((data) => {
-        if (activo) setDashboardBackend(data);
-      })
-      .catch((error: unknown) => {
-        if (activo) {
-          toast.error("No se pudo cargar el dashboard", {
-            description: mensajeError(
-              error,
-              "No fue posible obtener los datos. Intentá nuevamente.",
-            ),
-          });
+    const cargar = async () => {
+      let error: unknown;
+      for (let intento = 0; intento < intentos; intento++) {
+        if (!activo) return;
+        try {
+          const data = await obtenerDashboard(filtros);
+          if (!activo) return;
+          primeraCargaRef.current = false;
+          setDashboardBackend(data);
+          setCargandoBackend(false);
+          return;
+        } catch (cause) {
+          error = cause;
+          if (intento < intentos - 1) await new Promise((r) => setTimeout(r, 800));
         }
-      })
-      .finally(() => {
-        if (activo) setCargandoBackend(false);
+      }
+      if (!activo) return;
+      primeraCargaRef.current = false;
+      setCargandoBackend(false);
+      toast.error("No se pudo cargar el dashboard", {
+        description: mensajeError(
+          error,
+          "No fue posible obtener los datos. Intentá nuevamente.",
+        ),
       });
+    };
+
+    void cargar();
 
     return () => {
       activo = false;
@@ -85,12 +100,16 @@ function Dashboard() {
     if (!backend) return;
 
     let activo = true;
-    obtenerFiltros()
-      .then((data) => {
+    const cargarFiltros = async (intento: number) => {
+      if (!activo) return;
+      try {
+        const data = await obtenerFiltros();
         if (activo) setOpcionesBackend(data);
-      })
-      .catch((error: unknown) => {
-        if (activo) {
+      } catch (error: unknown) {
+        if (intento < 3) {
+          await new Promise((r) => setTimeout(r, 800));
+          void cargarFiltros(intento + 1);
+        } else if (activo) {
           toast.error("No se pudieron cargar los filtros", {
             description: mensajeError(
               error,
@@ -98,7 +117,10 @@ function Dashboard() {
             ),
           });
         }
-      });
+      }
+    };
+
+    void cargarFiltros(0);
 
     return () => {
       activo = false;

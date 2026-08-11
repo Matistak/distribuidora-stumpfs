@@ -9,6 +9,7 @@ import {
   CHAT_MODEL_KEY,
   cancelarTurnoChat,
   crearConversacionChat,
+  eliminarConversacionChat,
   enviarMensajeChat,
   nombreHerramienta,
   obtenerConversacionChat,
@@ -44,6 +45,8 @@ function ChatPage() {
   const [conversacionesCargando, setConversacionesCargando] = useState(false);
   const [conversacionesError, setConversacionesError] = useState<string>();
   const [creando, setCreando] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+  const [eliminandoError, setEliminandoError] = useState<string>();
 
   const [seleccionadoId, setSeleccionadoId] = useState<number | null>(null);
   const [detalle, setDetalle] = useState<ChatConversacionDetalle | null>(null);
@@ -313,6 +316,25 @@ function ChatPage() {
     seleccionadoRef.current = id;
   };
 
+  const eliminarConversacion = async (id: number) => {
+    if (eliminandoId !== null) return;
+    setEliminandoId(id);
+    setEliminandoError(undefined);
+    try {
+      await eliminarConversacionChat(id);
+      setConversaciones((prev) => prev.filter((c) => c.id !== id));
+      if (seleccionadoRef.current === id) {
+        setSeleccionadoId(null);
+        seleccionadoRef.current = null;
+        setDetalle(null);
+      }
+    } catch (cause: unknown) {
+      setEliminandoError(mensajeError(cause, "No se pudo borrar la conversación."));
+    } finally {
+      setEliminandoId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -367,9 +389,9 @@ function ChatPage() {
           <>
             <EstadoCodex status={status} reiniciando={reinicando} onReiniciar={reiniciar} />
 
-            {!status.installed && <InstruccionesInstalacion />}
+            {!status.installed && <InstruccionesInstalacion codex={status} />}
 
-            {status.installed && !status.authenticated && <InstruccionesLogin />}
+            {status.installed && !status.authenticated && <InstruccionesLogin codex={status} />}
 
             {status.installed && status.authenticated && (
               <ChatPanel
@@ -382,6 +404,9 @@ function ChatPage() {
                 conversacionesError={conversacionesError}
                 creando={creando}
                 onCrear={crearConversacion}
+                eliminandoId={eliminandoId}
+                eliminandoError={eliminandoError}
+                onEliminar={eliminarConversacion}
                 seleccionadoId={seleccionadoId}
                 onSeleccionar={seleccionarConversacion}
                 detalle={detalle}
@@ -450,7 +475,7 @@ function EstadoCodex({
   );
 }
 
-function InstruccionesInstalacion() {
+function InstruccionesInstalacion({ codex }: { codex: ChatStatus }) {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-card">
       <h2 className="text-sm font-semibold">Codex CLI no está instalado</h2>
@@ -460,11 +485,17 @@ function InstruccionesInstalacion() {
       <pre className="mt-3 overflow-x-auto rounded-lg bg-muted p-3 text-xs text-foreground">
         npm install -g @openai/codex{`\n`}codex login
       </pre>
+      {codex.codexCommand && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          La aplicación buscó Codex en:{" "}
+          <code className="rounded bg-muted px-1">{codex.codexCommand}</code>
+        </p>
+      )}
     </section>
   );
 }
 
-function InstruccionesLogin() {
+function InstruccionesLogin({ codex }: { codex: ChatStatus }) {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-card">
       <h2 className="text-sm font-semibold">Codex no está autenticado</h2>
@@ -475,6 +506,15 @@ function InstruccionesLogin() {
       <pre className="mt-3 overflow-x-auto rounded-lg bg-muted p-3 text-xs text-foreground">
         codex login{`\n`}codex login status
       </pre>
+      {codex.codexHome && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          El inicio de sesión se guarda en:{" "}
+          <code className="rounded bg-muted px-1">{codex.codexHome.path}</code>
+          {codex.codexHome.authExists
+            ? " · ya existe el archivo de sesión"
+            : " · todavía no existe el archivo de sesión"}
+        </p>
+      )}
       <p className="mt-3 text-xs text-muted-foreground">
         La aplicación nunca pide ni almacena tu contraseña ni tus tokens.
       </p>

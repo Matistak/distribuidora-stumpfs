@@ -34,6 +34,16 @@ export type ChatStatus = {
   account: ChatAccount | null;
   authenticated: boolean;
   error?: string;
+  /** Comando resuelto para ejecutar codex (Etapa 8, diagnostico). */
+  codexCommand?: string | null;
+  /** De donde se resolvio el comando (env, path, known, shim). */
+  codexSource?: string | null;
+  /** Directorio de configuracion de Codex y estado de su auth (Etapa 8). */
+  codexHome?: {
+    path: string;
+    fromEnv: boolean;
+    authExists: boolean;
+  };
 };
 
 export type ChatConversacion = {
@@ -113,6 +123,10 @@ export const crearConversacionChat = (input: { model: string; title?: string }) 
 /** GET /api/chat/conversations/:id — metadatos + mensajes desde el historial de Codex. */
 export const obtenerConversacionChat = (id: number) =>
   request<ChatConversacionDetalle>(`/api/chat/conversations/${id}`);
+
+/** DELETE /api/chat/conversations/:id — borra la conversacion (thread de Codex + local). */
+export const eliminarConversacionChat = (id: number) =>
+  request<{ deleted: boolean }>(`/api/chat/conversations/${id}`, { method: "DELETE" });
 
 /** POST /api/chat/conversations/:id/resume — reanuda el thread de Codex. */
 export const reanudarConversacionChat = (id: number, model?: string) =>

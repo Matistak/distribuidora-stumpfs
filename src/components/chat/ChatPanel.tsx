@@ -26,6 +26,9 @@ export function ChatPanel({
   conversacionesError,
   creando,
   onCrear,
+  eliminandoId,
+  eliminandoError,
+  onEliminar,
   seleccionadoId,
   onSeleccionar,
   detalle,
@@ -48,6 +51,10 @@ export function ChatPanel({
   conversacionesError?: string | undefined;
   creando: boolean;
   onCrear: () => void;
+  /** Id de la conversacion que se esta borrando (para mostrar el spinner). */
+  eliminandoId: number | null;
+  eliminandoError?: string | undefined;
+  onEliminar: (id: number) => void;
   seleccionadoId: number | null;
   onSeleccionar: (id: number) => void;
   detalle: ChatConversacionDetalle | null;
@@ -105,10 +112,21 @@ export function ChatPanel({
           </section>
         )}
 
+        {eliminandoError && (
+          <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-card">
+            <h2 className="text-xs font-semibold text-destructive">
+              No se pudo borrar la conversación
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">{eliminandoError}</p>
+          </section>
+        )}
+
         <ConversacionesPanel
           conversaciones={conversaciones}
           cargando={conversacionesCargando}
           creando={creando}
+          eliminandoId={eliminandoId}
+          onEliminar={onEliminar}
           seleccionadoId={seleccionadoId}
           onCrear={onCrear}
           onSeleccionar={onSeleccionar}

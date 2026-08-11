@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Database, Loader2, MessageCircle, Send, Square } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -32,6 +35,29 @@ function ChipsHerramientas({
           {enVivo ? "…" : ""}
         </span>
       ))}
+    </div>
+  );
+}
+
+function MensajeMarkdown({ text, enVivo }: { text: string; enVivo: boolean }) {
+  return (
+    <div
+      className={cn(
+        "space-y-2 leading-relaxed",
+        "[&_a]:underline [&_a]:underline-offset-2",
+        "[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
+        "[&_code]:rounded [&_code]:bg-background/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em]",
+        "[&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold",
+        "[&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5",
+        "[&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-background/60 [&_pre]:p-3",
+        "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
+        "[&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-1.5 [&_th]:border [&_th]:border-border [&_th]:p-1.5 [&_th]:text-left",
+      )}
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{text}</ReactMarkdown>
+      {enVivo && (
+        <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-current align-middle" />
+      )}
     </div>
   );
 }
@@ -137,9 +163,9 @@ export function HistorialMensajes({
             <div
               key={mensaje.id}
               className={cn(
-                "max-w-[85%] whitespace-pre-wrap rounded-xl px-4 py-3 text-sm",
+                "max-w-[85%] rounded-xl px-4 py-3 text-sm",
                 mensaje.role === "user"
-                  ? "ml-auto rounded-br-sm bg-primary text-primary-foreground"
+                  ? "ml-auto whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground"
                   : "mr-auto rounded-bl-sm bg-muted",
               )}
             >
@@ -152,14 +178,26 @@ export function HistorialMensajes({
                 herramientasEnCurso.length > 0 && (
                   <ChipsHerramientas herramientas={herramientasEnCurso} enVivo />
                 )}
-              {mensaje.text && (
-                <p>
-                  {mensaje.text}
-                  {mensaje.role === "assistant" && esUltimo && enviando && (
-                    <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-current align-middle" />
-                  )}
-                </p>
+              {mensaje.role === "assistant" && esUltimo && enviando && !mensaje.text && (
+                <div
+                  className="flex items-center gap-2 text-muted-foreground"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>
+                    {herramientasEnCurso.length > 0
+                      ? "Consultando datos..."
+                      : "Pensando en una respuesta..."}
+                  </span>
+                </div>
               )}
+              {mensaje.text &&
+                (mensaje.role === "assistant" ? (
+                  <MensajeMarkdown text={mensaje.text} enVivo={esUltimo && enviando} />
+                ) : (
+                  <p>{mensaje.text}</p>
+                ))}
               {typeof mensaje.createdAt === "number" && (
                 <p
                   className={cn(

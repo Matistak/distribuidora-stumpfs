@@ -44,15 +44,28 @@ if (!targetTriple) {
 }
 
 const ext = process.platform === "win32" ? ".exe" : "";
-const srcBinary = join(backendDist, `distribuidora-backend${ext}`);
-if (!existsSync(srcBinary)) {
-  console.error(`No se encontro el binario en ${srcBinary}`);
-  process.exit(1);
-}
 
-const dstBinary = join(binariesDir, `distribuidora-backend-${targetTriple}${ext}`);
-copyFileSync(srcBinary, dstBinary);
-console.log(`✅ Sidecar listo: ${dstBinary}`);
+const SIDECARS = [
+  {
+    src: join(backendDist, `distribuidora-backend${ext}`),
+    dst: join(binariesDir, `distribuidora-backend-${targetTriple}${ext}`),
+    label: "Sidecar principal",
+  },
+  {
+    src: join(backendDist, `distribuidora-ventas-mcp${ext}`),
+    dst: join(binariesDir, `distribuidora-ventas-mcp-${targetTriple}${ext}`),
+    label: "MCP de ventas (Etapa 8)",
+  },
+];
+
+for (const sidecar of SIDECARS) {
+  if (!existsSync(sidecar.src)) {
+    console.error(`No se encontro el binario en ${sidecar.src}`);
+    process.exit(1);
+  }
+  copyFileSync(sidecar.src, sidecar.dst);
+  console.log(`✅ ${sidecar.label}: ${sidecar.dst}`);
+}
 
 rmSync(resourcesDir, { recursive: true, force: true });
 mkdirSync(resourcesDir, { recursive: true });
@@ -62,7 +75,9 @@ const wanted = readdirSync(backendDist).filter(
     f.startsWith("libquery_engine-") ||
     f.startsWith("query_engine-") ||
     f === "schema.prisma" ||
-    f === "distribuidora.db",
+    f === "distribuidora.db" ||
+    f === "distribuidora.db-wal" ||
+    f === "distribuidora.db-shm",
 );
 
 for (const file of wanted) {

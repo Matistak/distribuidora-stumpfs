@@ -68,7 +68,11 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: {
         Accept: "application/json",
-        ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        // No declarar JSON en solicitudes sin cuerpo: Fastify rechaza un
+        // DELETE vacio con `Content-Type: application/json` antes de enrutarlo.
+        ...(init?.body !== undefined && !(init.body instanceof FormData)
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(init?.headers ?? {}),
       },
     });

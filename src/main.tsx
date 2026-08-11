@@ -17,10 +17,16 @@ async function esperarBackend(timeoutMs = 30_000) {
   if (!API_URL) return;
   const limite = Date.now() + timeoutMs;
   while (Date.now() < limite) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 1_000);
     try {
-      const res = await fetch(`${API_URL}/health`);
+      const res = await fetch(`${API_URL}/health`, { signal: controller.signal });
       if (res.ok) return;
-    } catch {}
+    } catch {
+      // The sidecar may still be starting or the probe may have timed out.
+    } finally {
+      window.clearTimeout(timeout);
+    }
     await new Promise((r) => setTimeout(r, 250));
   }
   console.warn("El backend no respondio a tiempo; se renderiza igual.");
@@ -35,6 +41,6 @@ esperarBackend().then(() => {
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>
-    </StrictMode>
+    </StrictMode>,
   );
 });

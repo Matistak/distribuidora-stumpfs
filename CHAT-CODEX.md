@@ -399,17 +399,27 @@ de T3 Code.
 
 ### Etapa 8: Persistencia y empaquetado
 
-- [ ] Objetivo: que la funcionalidad sobreviva al cierre y al instalador Tauri.
-  - [ ] Persistir conversaciones y configuracion en el directorio de datos de la
+- [x] Objetivo: que la funcionalidad sobreviva al cierre y al instalador Tauri.
+  - [x] Persistir conversaciones y configuracion en el directorio de datos de la
     aplicacion.
-  - [ ] No usar `src-tauri/resources` como base activa.
-  - [ ] Resolver la instalacion o deteccion de Codex CLI.
-  - [ ] Verificar rutas de `CODEX_HOME` en desarrollo y produccion.
-  - [ ] Agregar backups si el historial propio se persiste.
-  - [ ] Probar actualizaciones sin perder conversaciones.
+  - [x] No usar `src-tauri/resources` como base activa.
+  - [x] Resolver la instalacion o deteccion de Codex CLI.
+  - [x] Verificar rutas de `CODEX_HOME` en desarrollo y produccion.
+  - [x] Agregar backups si el historial propio se persiste.
+  - [x] Probar actualizaciones sin perder conversaciones.
 
   Criterio de finalizacion: una aplicacion empaquetada puede iniciar el backend,
   encontrar Codex y conservar el historial local.
+
+  > **Comentario (11/08/2026):** implementado con alcance cross-platform
+  > (macOS + Windows). Se restauraron los scripts de empaquetado que faltaban
+  > (borrados por error en el commit 659fb21), se agrego la deteccion de Codex
+  > con binario nativo (el CLI npm es un wrapper de node que fallaba desde
+  > Finder), la DB se siembra en el data dir con recuperacion automatica,
+  > backups semanales (1 copia) y alineacion de schema en instalaciones
+  > existentes. Verificado en vivo con el binario empaquetado en entorno Finder
+  > (PATH minimo, sin CODEX_HOME). Detalle en
+  > [Fase 8](#fase-8---persistencia-y-empaquetado).
 
 ### Etapa 9: Seguridad y pruebas
 
@@ -961,9 +971,10 @@ el flujo.
 ### Notas
 
 - Los procesos MCP stdio de Codex se lanzan con entorno restringido
-  (`env_clear` + whitelist): el entrypoint calcula `DATABASE_URL` contra
-  `<raiz>/prisma/distribuidora.db` si no esta en el entorno (en la app
-  empaquetada la setea `bootstrap.ts` y se hereda).
+  (`env_clear` + whitelist): en desarrollo el entrypoint calcula `DATABASE_URL`
+  contra `<raiz>/prisma/distribuidora.db` si no esta en el entorno; en la app
+  empaquetada el MCP resuelve su propio data dir y engine via
+  `resolvePrismaEnv()` (Fase 8), sin depender del env heredado.
 - El log de Fastify registra las notificaciones `mcpServer/*` con sus params
   y los requests del servidor: util para depurar la conexion MCP en Etapa 7.
 - Las respuestas de las herramientas son texto con estructura simple para el
@@ -1055,6 +1066,138 @@ Frontend (`distribuidora-front`):
 - `scripts/test-tool-calls.ts` no importa `src/server.js` (levantaria Fastify
   y el proceso nunca terminaria); crea su propio `PrismaClient` con la URL de
   la base de desarrollo.
+
+## Fase 8 - Persistencia y empaquetado
+
+Estado al 11/08/2026. Una aplicacion empaquetada inicia el backend, encuentra
+Codex y conserva el historial local. Alcance cross-platform: el desarrollo se
+hace en macOS y el cliente final es Windows. Criterio de finalizacion cumplido.
+
+### Decisiones
+
+| Tema | Decision |
+| --- | --- |
+| Base activa | El data dir de la app (macOS: `~/Library/Application Support/com.distribuidora.app`; Windows: `%APPDATA%\com.distribuidora.app`). `src-tauri/resources` es solo la semilla de primera instalacion. |
+| Semilla del instalador | **DB vacia con el schema** (solo tablas, sin filas), generada en `scripts/copy-assets.js` con `prisma db push` contra un archivo temporal. El cliente arranca sin datos y carga su propio Excel por "Cargar Excel". La DB de desarrollo queda fuera del empaquetado. |
+| Empaquetado | Dos binarios compilados con `bun build --compile`: el sidecar principal (`distribuidora-backend`) y el MCP de ventas (`distribuidora-ventas-mcp`). Ambos se declaran en `externalBin` de Tauri. El MCP no depende de Node (no existe en la app empaquetada). |
+| Deteccion de Codex | `CODEX_CLI_COMMAND` (override estricto) -> `codex` en PATH -> rutas conocidas por plataforma (Homebrew, npm global, scoop, winget). En macOS/Windows el CLI npm es un wrapper de node: se resuelve al binario nativo `vendor/<triple>/bin/codex(.exe)`. |
+| CODEX_HOME | `CODEX_HOME` o `~/.codex` (`%USERPROFILE%\.codex` en Windows). Se expone en `/api/chat/status` junto con el comando resuelto para diagnosticar en maquinas nuevas. |
+| Backups | Semanales (clave ISO `YYYY-Www`), una sola copia retenida, con `VACUUM INTO` (consistente aun con WAL). En `backups/` dentro del data dir. |
+| Actualizaciones | La DB no se borra al reinstalar (vive en el data dir). `ensureChatSchema` crea tablas nuevas (p. ej. `ChatConversation`) en instalaciones existentes; `bootstrap` mueve a un lado una DB sin tablas core y re-siembra. |
+
+### Implementacion
+
+Backend (`distribuidora-backend`):
+
+- `src/lib/appPaths.ts` (nuevo) - rutas compartidas: `appDataDir()`,
+  `backupDir()`, `isPackaged()` (deteccion del binario bun), `resourceDirs()`,
+  `findResource()`, `prismaEnginePath()`, `resolvePrismaEnv()`.
+- `src/bootstrap.ts` - siembra la DB desde los resources al data dir solo si
+  no existe; si existe pero no tiene las tablas core (`Venta`/`Carga`), la
+  mueve a `distribuidora.db.corrupt-<ts>` y re-siembra (recuperacion
+  automatica de bases vacias o corruptas). Configura `DATABASE_URL` y
+  `PRISMA_QUERY_ENGINE_LIBRARY` para el entorno empaquetado.
+- `src/backups.ts` (nuevo) - `runWeeklyBackup`: copia consistente semanal
+  con `VACUUM INTO`, nombre `distribuidora-YYYY-Www.db`, retiene una sola
+  copia (poda de mas viejas). Se ejecuta al arrancar `server.ts`, sin bloquear
+  si falla.
+- `src/mcp/ventasMcpServer.ts` - cuando esta empaquetado resuelve `DATABASE_URL`
+  y el engine de Prisma con `resolvePrismaEnv()` (no depende del env heredado,
+  porque `app-server` lanza los MCP con entorno restringido).
+- `src/mcp/ventasMcpConfig.ts` - orden de resolucion del comando MCP:
+  1. `VENTAS_MCP_CMD` + `VENTAS_MCP_ARGS`.
+  2. Empaquetado: `distribuidora-ventas-mcp(.exe)` junto al sidecar.
+  3. `dist/mcp/ventasMcpServer.js` con node (backend compilado en dev).
+  4. `node --import tsx src/mcp/ventasMcpServer.ts` (desarrollo).
+- `src/chat/codexResolver.ts` (nuevo) - resolucion cross-platform de Codex:
+  - En Windows traduce shims `.cmd` de npm: primero busca el `codex.exe`
+    nativo del paquete de plataforma; si no, `node <cli.js>`.
+  - En macOS/Linux resuelve symlinks y el wrapper `codex.js` al binario
+    nativo (`@openai/codex-<plataforma>/vendor/<triple>/bin/codex`).
+  - `codexHomeInfo()` expone `{ path, fromEnv, authExists }`.
+- `src/chat/codexService.ts` - usa el resolver (`resolvedInfo()`), pasa
+  `prefixArgs` al proceso y `status()` agrega `codexCommand`, `codexSource` y
+  `codexHome`. `CodexNotInstalledError` indica el comando buscado.
+- `src/chat/jsonrpc.ts` - `prefixArgs` (p. ej. `node cli.js`), y en Windows el
+  cierre usa `taskkill /pid <pid> /T /F` para no dejar huerfanos (SIGTERM no
+  es un mecanismo real en Windows).
+- `src/server.ts` - `ensureChatSchema` crea `ChatConversation` en bases
+  existentes sin esa tabla (actualizaciones sin perder conversaciones), y
+  `runWeeklyBackup` al arrancar.
+- `src/routes/chat.ts` - ya no pasa `command` al `CodexService`: la resolucion
+  queda en el resolver (respeta `CODEX_CLI_COMMAND` como override).
+- `scripts/build-binary.js` (restaurado y ampliado) - compila los dos binarios
+  con bun para el triple local y limpia los artefactos `<hash>.bun-build`.
+- `scripts/copy-assets.js` (restaurado) - copia `schema.prisma`, el engine de
+  Prisma a `dist/` y genera la DB semilla del instalador: **vacia, con el
+  schema actual**, ejecutando `prisma db push` contra un archivo temporal
+  (`--skip-generate`). Asi el cliente arranca sin datos y sin depender de la
+  DB de desarrollo (que tiene WAL activo y no debe copiarse tal cual).
+
+Frontend (`distribuidora-front`):
+
+- `src/lib/chat.ts` - `ChatStatus` agrega `codexCommand`, `codexSource` y
+  `codexHome` (solo diagnostico; nunca tokens).
+- `src/routes/chat.tsx` - las tarjetas de instalacion/login muestran el
+  comando buscado, la ruta de `CODEX_HOME` y si existe el archivo de sesion
+  (util en maquinas nuevas).
+- `src/routes/index.tsx` - la carga inicial del dashboard y de los filtros
+  se reintenta (8 intentos x 800ms en la primera carga) para cubrir el
+  arranque lento del sidecar en el primer launch.
+- `scripts/setup-sidecar.js` - copia los DOS sidecars (backend + MCP) con el
+  triple de Tauri y los resources (engine, schema, DB semilla).
+- `src-tauri/tauri.conf.json` - `externalBin` incluye
+  `binaries/distribuidora-ventas-mcp`.
+- `src-tauri/src/main.rs` - warning de Rust corregido (`_child`).
+
+### El wrapper de node y su causa
+
+En la instalacion npm, `/opt/homebrew/bin/codex` es un symlink a
+`@openai/codex/bin/codex.js`, un wrapper que ejecuta `node <cli.js>` y lanza
+el binario nativo como hijo. La app empaquetada (lanzada desde Finder) tiene
+PATH minimo (`/usr/bin:/bin:/usr/sbin:/sbin`) y no encuentra `node`, por lo
+que `codex --version` fallaba con exit 127 y el chat reportaba
+"Codex CLI no encontrado" (HTTP 503). La solucion fue resolver al binario
+nativo que el paquete de plataforma incluye en
+`vendor/<triple>/bin/codex(.exe)`, replicando la logica del propio wrapper.
+En Windows pasa lo mismo con los shims `.cmd` de npm; se resuelve el
+`codex.exe` nativo o, como fallback, `node <cli.js>`.
+
+### Comportamiento verificado en vivo
+
+| Caso | Resultado |
+| --- | --- |
+| `npm run package` (macOS arm64) | Dos binarios bun (`distribuidora-backend`, `distribuidora-ventas-mcp`) + assets; la semilla generada es una DB vacia (schema, 0 filas); sin artefactos `.bun-build` |
+| Primer arranque empaquetado | DB vacia sembrada desde resources al data dir; backup semanal creado; `/health` OK en <1s |
+| Primer arranque con semilla vacia | `Venta`, `Carga` y `ChatConversation` creadas; dashboard con 0 facturas y periodo vacio (estado correcto para el cliente) |
+| Segundo arranque | No re-siembra ni mueve la DB (la base vacia con schema es valida) |
+| DB sin tablas core en el data dir | Se mueve a `distribuidora.db.corrupt-<ts>` y se re-siembra (recuperacion de bases corruptas) |
+| Instalacion existente sin `ChatConversation` | `ensureChatSchema` crea la tabla al arrancar y las conversaciones siguen funcionando |
+| Entorno Finder (PATH minimo, sin CODEX_HOME) | `installed: true`, `authenticated: true`; `codexCommand` apunta al binario nativo (`source: "shim"`); `codexHome` = `~/.codex` con `authExists` |
+| `GET /api/chat/models` en la app empaquetada | 4 modelos visibles con `defaultModel: "gpt-5.6-terra"` |
+| Turno real con MCP compilado | SSE: `message.start` -> deltas -> `message.tool_call` (`ventas` / `resumen_ventas`) -> `message.completed`; respuesta con datos reales (3,838 facturas julio 2026) |
+| Reinicio del sidecar | El historial persiste (conversaciones y mensajes releidos via `thread/read`) |
+| Cierre con SIGTERM | app-server y el MCP hijo terminan; sin procesos huerfanos (en Windows se usa `taskkill /T`) |
+| `tsc` backend, `tsc --noEmit` + `vite build` + lint frontend | Sin errores |
+
+### Notas
+
+- La restauracion de `scripts/build-binary.js` y `copy-assets.js` era
+  obligatoria: los scripts fueron borrados por error en el commit 659fb21 y
+  `npm run package` fallaba.
+- La semilla del instalador se genera en cada `npm run package` con
+  `prisma db push` sobre el schema vigente: siempre queda al dia con el
+  schema y no arrastra datos de desarrollo ni WAL de la DB local.
+- `CODEX_CLI_COMMAND` sigue siendo el override para simular "no instalado" en
+  pruebas (`codex-inexistente`) y para forzar una ruta especifica.
+- Para reconstruir la app con cambios de backend: `node scripts/setup-sidecar.js`
+  (backend + sidecars) y despues `npm run tauri:build` (frontend). Si solo
+  cambio el frontend, alcanza con `tauri:build`.
+- El `.dmg` de macOS puede fallar por permisos de Automatizacion de Finder
+  (`bundle_dmg.sh` usa AppleScript); el `.app` en
+  `target/release/bundle/macos/` se puede copiar directamente a Aplicaciones.
+- Restaurar un backup: cerrar la app, reemplazar `distribuidora.db` por el
+  backup en el data dir, reabrir.
 
 ## Referencias
 
