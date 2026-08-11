@@ -369,15 +369,15 @@ de T3 Code.
 
 ### Etapa 6: MCP de ventas
 
-- [ ] Objetivo: permitir que Codex responda usando la base de datos real.
-  - [ ] Crear el proceso MCP local.
-  - [ ] Reutilizar los servicios de consulta de ventas del backend.
-  - [ ] Definir schemas para argumentos de herramientas.
-  - [ ] Implementar inicialmente una herramienta de resumen.
-  - [ ] Agregar consultas por fechas, vendedor, producto y ciudad.
-  - [ ] Limitar resultados y tiempos de ejecucion.
-  - [ ] Configurar `app-server` para usar el MCP por `stdio`.
-  - [ ] Probar preguntas ambiguas y filtros invalidos.
+- [x] Objetivo: permitir que Codex responda usando la base de datos real.
+  - [x] Crear el proceso MCP local.
+  - [x] Reutilizar los servicios de consulta de ventas del backend.
+  - [x] Definir schemas para argumentos de herramientas.
+  - [x] Implementar inicialmente una herramienta de resumen.
+  - [x] Agregar consultas por fechas, vendedor, producto y ciudad.
+  - [x] Limitar resultados y tiempos de ejecucion.
+  - [x] Configurar `app-server` para usar el MCP por `stdio`.
+  - [x] Probar preguntas ambiguas y filtros invalidos.
 
   Criterio de finalizacion: Codex puede responder preguntas comerciales usando
   agregados reales y no inventa datos cuando una consulta no devuelve resultados.
@@ -850,6 +850,125 @@ Frontend (`distribuidora-front`):
 - Los comentarios del asistente que no son la respuesta final (fases
   commentary) se muestran como mensajes de asistente en el historial; la
   Etapa 7 puede resumirlos u ocultarlos.
+
+## Fase 6 - MCP de ventas
+
+Estado al 10/08/2026. Codex responde preguntas comerciales usando agregados
+reales de la base local y no inventa datos cuando una consulta no devuelve
+resultados. Criterio de finalizacion cumplido.
+
+### Arquitectura
+
+```text
+React dentro de Tauri
+        |
+        | HTTP + SSE (sin cambios en Etapa 6)
+        v
+Fastify local
+        |
+        | JSON-RPC por stdio + `-c mcp_servers.ventas.*`
+        v
+codex app-server  --spawna-->  proceso MCP `ventas` (stdio, solo lectura)
+                                        |
+                                        | Prisma + SQLite (DB local)
+                                        v
+                                 Consultas agregadas reales
+```
+
+El MCP corre como proceso local iniciado por `app-server` (stdio), como
+definio la Fase 0: sin OAuth, sin bearer tokens y sin listener en la red.
+
+### Implementacion
+
+Backend (`distribuidora-backend`):
+
+- `src/services/ventasConsultas.ts` (nuevo) - consultas de solo lectura con
+  schemas zod y salida en texto para el modelo:
+  - `resumen_ventas` (KPIs del periodo), `ventas_por_periodo` (dia/mes/anho),
+    `ventas_por_vendedor`, `ventas_por_producto`, `ventas_por_ciudad`
+    (rankings con participacion) y `comparar_periodos`.
+  - Limites: fechas YYYY-MM-DD validas, rango maximo de 10 anios, ranking
+    limitado (default 10, maximo 50), montos redondeados.
+  - Reutiliza `whereClausula` de `dashboardService.ts` (exportado para eso).
+  - Sin SQL arbitrario: las columnas de ranking estan en una lista fija.
+- `src/mcp/mcpServer.ts` (nuevo) - servidor MCP minimo sobre stdio
+  (JSON-RPC 2.0): `initialize` con `instructions`, `notifications/initialized`,
+  `ping`, `tools/list` y `tools/call`. Misma decision que el cliente JSON-RPC
+  de la Etapa 2: se implementa a mano, sin `@modelcontextprotocol/sdk`.
+- `src/mcp/ventasMcpServer.ts` (nuevo) - entrypoint del proceso: define las 6
+  herramientas (schema zod + JSON Schema + handler), las instrucciones para el
+  modelo (fechas, montos en quetzales, "no inventes cifras") y cierra el
+  proceso con SIGINT/SIGTERM.
+- `src/mcp/ventasMcpConfig.ts` (nuevo) - resuelve el comando del MCP:
+  1. `VENTAS_MCP_CMD` + `VENTAS_MCP_ARGS` (JSON) si el usuario los define.
+  2. `dist/mcp/ventasMcpServer.js` con el node actual si el backend esta
+     compilado.
+  3. En desarrollo: `node --import tsx src/mcp/ventasMcpServer.ts`.
+  `ventasMcpLaunchArgs()` genera los `-c` de `app-server`:
+  `mcp_servers.ventas.command/args`, `default_tools_approval_mode="auto"` y
+  `tool_timeout_sec=45`.
+- `src/routes/chat.ts` - `CodexService` recibe `extraArgs: ventasMcpLaunchArgs()`
+  y `GET /api/chat/status` agrega el campo `mcp` (servidor configurado y
+  comando resuelto).
+- `src/chat/autoApproval.ts` (nuevo) - auto-aprueba las tool calls del servidor
+  `ventas` (ver "El cuelgue y su causa").
+- `src/chat/chatStreamService.ts` - usa la auto-aprobacion durante cada turno.
+- `src/chat/jsonrpc.ts` + `src/chat/codexService.ts` - soporte para requests
+  del servidor hacia el cliente (`onClientRequest` + `respond`): el app-server
+  pide aprobaciones de herramientas por este canal.
+- Scripts de desarrollo: `scripts/test-mcp.ts` (smoke test del MCP standalone)
+  y `scripts/test-mcp-turn.ts` (turno real con pregunta comercial;
+  parametrizable con `CODEX_TEST_MODEL` y `CODEX_TEST_PREGUNTA`).
+
+### El cuelgue y su causa
+
+Al probar por primera vez un turno comercial, el turno nunca terminaba: el
+modelo repetia "Voy a consultar..." sin que la herramienta se ejecutara. El
+diagnostico (logs de notificaciones y de requests del servidor) mostro:
+
+- El MCP `ventas` llegaba a `status: "ready"` (la conexion funcionaba).
+- El modelo SI llamaba la herramienta: `item/started {"type":"mcpToolCall"}`.
+- Pero el app-server interrumpia el turno con un request al cliente:
+  `mcpServer/elicitation/request` con `_meta.codex_approval_kind: "mcp_tool_call"`
+  y mensaje `Allow the ventas MCP server to run tool "resumen_ventas"?`.
+- Nuestro cliente JSON-RPC descartaba los requests con `id` que no esperaba,
+  asi que nadie respondia y el turno quedaba colgado para siempre.
+
+Solucion: `autoApproveVentasToolCalls` responde automaticamente con
+`{ action: "accept", content: null }` a las elicitations de tool calls del
+servidor `ventas` (solo lectura; el MVP no implementa aprobaciones). El
+`serverRequest/resolved` confirma la aprobacion y el turno sigue.
+
+Nota: `default_tools_approval_mode="auto"` en `mcp_servers.ventas` no evito la
+elicitacion en la version 0.147.0; la auto-respuesta es lo que hace funcionar
+el flujo.
+
+### Comportamiento verificado en vivo
+
+| Caso | Resultado |
+| --- | --- |
+| MCP standalone (`scripts/test-mcp.ts`) | initialize con instructions, 6 herramientas con schema, consultas reales, caso sin datos, fechas invalidas, granularidad invalida y herramienta inexistente |
+| "¿Cuantas facturas en julio 2026 y vendedor lider?" | `resumen_ventas` + `ventas_por_vendedor` (2 tool calls, 2 elicitations auto-aprobadas); respuesta: 3,838 facturas y CESAR BERINO con Q158,866,148.74 |
+| Dato exacto contra la base | `SH GRAN VINO TINTO 12X750 ML` con Q96,266,552.73 coincide con el SQL directo (no alucina) |
+| "¿Cuantas facturas en enero 2025?" (sin datos) | "No hubo facturas en enero de 2025 según la consulta de ventas." |
+| "¿Cuantos vendio JUAN PEREZ?" (vendedor inexistente) | "No hay resultados para `JUAN PEREZ` en julio de 2026, así que no registró ventas en ese período." |
+| `GET /api/chat/status` | Incluye `mcp: { server: "ventas", configured: true, command, args }` |
+| Flujo completo por el backend (SSE) | `message.start` -> deltas -> `message.completed` con el mismo `turnId`; respuesta basada en datos reales |
+| Modelo con cobertura parcial | El modelo advirtio solo: los datos llegan al 15/07 y no invento el mes completo |
+| MCP compilado (`dist/mcp`) | El entrypoint de `dist` responde igual que en desarrollo (29ms por consulta) |
+| Cierre limpio | app-server y el MCP hijo terminan con SIGTERM; sin procesos huerfanos |
+
+### Notas
+
+- Los procesos MCP stdio de Codex se lanzan con entorno restringido
+  (`env_clear` + whitelist): el entrypoint calcula `DATABASE_URL` contra
+  `<raiz>/prisma/distribuidora.db` si no esta en el entorno (en la app
+  empaquetada la setea `bootstrap.ts` y se hereda).
+- El log de Fastify registra las notificaciones `mcpServer/*` con sus params
+  y los requests del servidor: util para depurar la conexion MCP en Etapa 7.
+- Las respuestas de las herramientas son texto con estructura simple para el
+  modelo; el frontend no necesita conocer el MCP (Etapa 7 muestra las tool
+  calls resumidas si se desea).
 
 ## Referencias
 
