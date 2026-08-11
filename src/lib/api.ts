@@ -44,7 +44,7 @@ export class ApiError extends Error {
   }
 }
 
-class NetworkError extends Error {
+export class NetworkError extends Error {
   constructor() {
     super(
       "No se pudo conectar con el servidor. Verificá que esté disponible e intentá nuevamente.",

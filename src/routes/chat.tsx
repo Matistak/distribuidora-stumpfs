@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bot, Loader2, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +10,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConversacionesPanel } from "@/components/chat/Conversaciones";
+import { HistorialMensajes } from "@/components/chat/Historial";
 import { backendConectado, mensajeError } from "@/lib/api";
 import {
   CHAT_MODEL_KEY,
+  cancelarTurnoChat,
+  crearConversacionChat,
+  enviarMensajeChat,
+  obtenerConversacionChat,
+  obtenerConversacionesChat,
   obtenerEstadoChat,
   obtenerModelosChat,
   reiniciarCodex,
+  type ChatConversacion,
+  type ChatConversacionDetalle,
+  type ChatMensaje,
   type ChatModel,
+  type ChatSseEvent,
   type ChatStatus,
 } from "@/lib/chat";
 
@@ -35,6 +46,30 @@ function ChatPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string>();
   const [reinicando, setReiniciando] = useState(false);
+
+  const [conversaciones, setConversaciones] = useState<ChatConversacion[]>([]);
+  const [conversacionesCargando, setConversacionesCargando] = useState(false);
+  const [conversacionesError, setConversacionesError] = useState<string>();
+  const [creando, setCreando] = useState(false);
+
+  const [seleccionadoId, setSeleccionadoId] = useState<number | null>(null);
+  const [detalle, setDetalle] = useState<ChatConversacionDetalle | null>(null);
+  const [detalleCargando, setDetalleCargando] = useState(false);
+  const [detalleError, setDetalleError] = useState<string>();
+
+  // Etapa 5: envio y streaming de mensajes.
+  const [mensajes, setMensajes] = useState<ChatMensaje[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [turnoId, setTurnoId] = useState<string | null>(null);
+  const [errorEnvio, setErrorEnvio] = useState<string>();
+  const abortRef = useRef<AbortController | null>(null);
+  const canceladoRef = useRef(false);
+  // Ref del id seleccionado: el refresco post-turno usa el id vigente en el
+  // momento del cierre, no el del render donde arranco el envio.
+  const seleccionadoRef = useRef<number | null>(null);
+  useEffect(() => {
+    seleccionadoRef.current = seleccionadoId;
+  }, [seleccionadoId]);
 
   useEffect(() => {
     if (!backend) {
@@ -65,6 +100,158 @@ function ChatPage() {
     };
   }, [backend]);
 
+  useEffect(() => {
+    if (!backend || !status?.authenticated) return;
+
+    let activo = true;
+    setConversacionesCargando(true);
+    setConversacionesError(undefined);
+
+    obtenerConversacionesChat()
+      .then(({ conversations }) => {
+        if (activo) setConversaciones(conversations);
+      })
+      .catch((cause: unknown) => {
+        if (activo)
+          setConversacionesError(mensajeError(cause, "No se pudieron cargar las conversaciones."));
+      })
+      .finally(() => {
+        if (activo) setConversacionesCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [backend, status?.authenticated]);
+
+  useEffect(() => {
+    if (seleccionadoId === null) return;
+
+    let activo = true;
+    setDetalleCargando(true);
+    setDetalleError(undefined);
+
+    obtenerConversacionChat(seleccionadoId)
+      .then((detalle) => {
+        if (!activo) return;
+        setDetalle(detalle);
+        setConversaciones((prev) =>
+          prev.map((c) => (c.id === detalle.conversation.id ? detalle.conversation : c)),
+        );
+      })
+      .catch((cause: unknown) => {
+        if (activo) setDetalleError(mensajeError(cause, "No se pudo leer la conversación."));
+      })
+      .finally(() => {
+        if (activo) setDetalleCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [seleccionadoId]);
+
+  // El historial mostrado se sincroniza con el detalle cargado (y con lo que
+  // el streaming agrega de forma optimista).
+  useEffect(() => {
+    setMensajes(detalle?.messages ?? []);
+  }, [detalle]);
+
+  // Al cambiar de conversacion se limpia el estado de envio en curso.
+  useEffect(() => {
+    setEnviando(false);
+    setTurnoId(null);
+    setErrorEnvio(undefined);
+  }, [seleccionadoId]);
+
+  /**
+   * Refresca el detalle de una conversacion tras un turno. Solo se aplica si
+   * sigue siendo la conversacion seleccionada; la lista siempre se actualiza.
+   */
+  const refrescarConversacion = async (conversacionId: number) => {
+    try {
+      const nuevo = await obtenerConversacionChat(conversacionId);
+      setConversaciones((prev) =>
+        prev.map((c) => (c.id === conversacionId ? nuevo.conversation : c)),
+      );
+      if (seleccionadoRef.current === conversacionId) setDetalle(nuevo);
+    } catch {
+      // El historial se sincronizara al reabrir la conversacion.
+    }
+  };
+
+  const enviar = async (texto: string) => {
+    if (!detalle || enviando) return;
+    const conversacionId = detalle.conversation.id;
+    canceladoRef.current = false;
+    const abort = new AbortController();
+    abortRef.current = abort;
+
+    const mensajeUsuario: ChatMensaje = {
+      id: `local-${Date.now()}`,
+      role: "user",
+      text: texto,
+      createdAt: Date.now(),
+    };
+    const mensajeAsistente: ChatMensaje = {
+      id: "local-asistente",
+      role: "assistant",
+      text: "",
+    };
+    setMensajes((prev) => [...prev, mensajeUsuario, mensajeAsistente]);
+    setEnviando(true);
+    setTurnoId(null);
+    setErrorEnvio(undefined);
+
+    let acumulado = "";
+    let errorDelStream: string | undefined;
+
+    const onEvent = (event: ChatSseEvent) => {
+      switch (event.event) {
+        case "message.start":
+          setTurnoId(event.data.turnId);
+          break;
+        case "message.delta":
+          acumulado += event.data.text;
+          setMensajes((prev) =>
+            prev.map((m) => (m.id === "local-asistente" ? { ...m, text: acumulado } : m)),
+          );
+          break;
+        case "message.error":
+          errorDelStream = event.data.message;
+          break;
+        case "message.completed":
+          break;
+      }
+    };
+
+    try {
+      await enviarMensajeChat(conversacionId, texto, onEvent, abort.signal);
+    } catch (cause: unknown) {
+      if (!canceladoRef.current) {
+        setErrorEnvio(mensajeError(cause, "No se pudo enviar el mensaje."));
+      }
+    } finally {
+      if (errorDelStream && !canceladoRef.current) setErrorEnvio(errorDelStream);
+      setEnviando(false);
+      setTurnoId(null);
+      abortRef.current = null;
+      await refrescarConversacion(conversacionId);
+    }
+  };
+
+  const cancelar = async () => {
+    if (!enviando || !detalle || !turnoId) return;
+    const conversacionId = detalle.conversation.id;
+    canceladoRef.current = true;
+    abortRef.current?.abort();
+    try {
+      await cancelarTurnoChat(conversacionId, turnoId);
+    } catch {
+      // El backend tambien interrumpe al cerrarse la conexion SSE.
+    }
+  };
+
   const modeloElegido = useMemo(() => {
     if (!modelos.length) return null;
     if (seleccionado && modelos.some((m) => m.id === seleccionado)) return seleccionado;
@@ -94,6 +281,35 @@ function ChatPage() {
     } finally {
       setReiniciando(false);
     }
+  };
+
+  const crearConversacion = async () => {
+    if (creando || !modeloElegido) return;
+    setCreando(true);
+    setConversacionesError(undefined);
+    try {
+      const { conversation } = await crearConversacionChat({ model: modeloElegido });
+      const { conversations } = await obtenerConversacionesChat();
+      setConversaciones(conversations);
+      setSeleccionadoId(conversation.id);
+    } catch (cause: unknown) {
+      setConversacionesError(mensajeError(cause, "No se pudo crear la conversación."));
+    } finally {
+      setCreando(false);
+    }
+  };
+
+  const seleccionarConversacion = (id: number) => {
+    if (id === seleccionadoId) return;
+    if (enviando) {
+      // Al cambiar de conversacion se detiene el turno en curso.
+      canceladoRef.current = true;
+      abortRef.current?.abort();
+      setEnviando(false);
+      setTurnoId(null);
+    }
+    setSeleccionadoId(id);
+    seleccionadoRef.current = id;
   };
 
   return (
@@ -155,46 +371,78 @@ function ChatPage() {
             {status.installed && !status.authenticated && <InstruccionesLogin />}
 
             {status.installed && status.authenticated && (
-              <section className="rounded-xl border border-border bg-card p-5 shadow-card">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-sm font-semibold">Modelo del asistente</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Elegí el modelo que responderá tus consultas. El chat estará disponible en la
-                      próxima etapa.
-                    </p>
+              <>
+                <section className="rounded-xl border border-border bg-card p-5 shadow-card">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-sm font-semibold">Modelo del asistente</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Elegí el modelo que responderá tus consultas. Las conversaciones nuevas se
+                        crearán con este modelo.
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="mt-4 max-w-md space-y-3">
-                  <Select
-                    {...(modeloElegido ? { value: modeloElegido } : {})}
-                    onValueChange={cambiarModelo}
-                    disabled={!modelos.length}
-                  >
-                    <SelectTrigger className="w-full text-sm">
-                      <SelectValue placeholder="Seleccioná un modelo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelos.map((modelo) => (
-                        <SelectItem key={modelo.id} value={modelo.id}>
-                          {modelo.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="mt-4 max-w-md space-y-3">
+                    <Select
+                      {...(modeloElegido ? { value: modeloElegido } : {})}
+                      onValueChange={cambiarModelo}
+                      disabled={!modelos.length}
+                    >
+                      <SelectTrigger className="w-full text-sm">
+                        <SelectValue placeholder="Seleccioná un modelo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modelos.map((modelo) => (
+                          <SelectItem key={modelo.id} value={modelo.id}>
+                            {modelo.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                  {modeloActual && (
-                    <p className="text-xs text-muted-foreground">{modeloActual.description}</p>
-                  )}
+                    {modeloActual && (
+                      <p className="text-xs text-muted-foreground">{modeloActual.description}</p>
+                    )}
 
-                  {!modelos.length && (
-                    <p className="text-xs text-muted-foreground">
-                      No hay modelos disponibles para la cuenta.
-                    </p>
-                  )}
-                </div>
-              </section>
+                    {!modelos.length && (
+                      <p className="text-xs text-muted-foreground">
+                        No hay modelos disponibles para la cuenta.
+                      </p>
+                    )}
+                  </div>
+                </section>
+
+                {conversacionesError && (
+                  <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 shadow-card">
+                    <h2 className="text-sm font-semibold text-destructive">
+                      No se pudieron cargar las conversaciones
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{conversacionesError}</p>
+                  </section>
+                )}
+
+                <ConversacionesPanel
+                  conversaciones={conversaciones}
+                  cargando={conversacionesCargando}
+                  creando={creando}
+                  seleccionadoId={seleccionadoId}
+                  onCrear={crearConversacion}
+                  onSeleccionar={seleccionarConversacion}
+                />
+
+                <HistorialMensajes
+                  detalle={detalle}
+                  cargando={detalleCargando}
+                  error={detalleError}
+                  mensajes={mensajes}
+                  enviando={enviando}
+                  turnoActivo={turnoId}
+                  errorEnvio={errorEnvio}
+                  onEnviar={enviar}
+                  onCancelar={cancelar}
+                />
+              </>
             )}
           </>
         )}

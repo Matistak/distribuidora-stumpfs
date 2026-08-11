@@ -341,28 +341,28 @@ de T3 Code.
 
 ### Etapa 4: Conversaciones e historial
 
-- [ ] Objetivo: crear, listar y continuar chats.
-  - [ ] Implementar `thread/start`.
-  - [ ] Implementar `thread/list` o una tabla local de conversaciones.
-  - [ ] Implementar `thread/read`.
-  - [ ] Implementar `thread/resume`.
-  - [ ] Asociar `codexThreadId` con el identificador local.
-  - [ ] Agregar nombres y fechas de conversacion.
-  - [ ] Definir archivado o eliminacion como funcionalidad posterior.
+- [x] Objetivo: crear, listar y continuar chats.
+  - [x] Implementar `thread/start`.
+  - [x] Implementar `thread/list` o una tabla local de conversaciones.
+  - [x] Implementar `thread/read`.
+  - [x] Implementar `thread/resume`.
+  - [x] Asociar `codexThreadId` con el identificador local.
+  - [x] Agregar nombres y fechas de conversacion.
+  - [x] Definir archivado o eliminacion como funcionalidad posterior.
 
   Criterio de finalizacion: el usuario puede cerrar la aplicacion, volver a
   abrirla y continuar una conversacion anterior.
 
 ### Etapa 5: Envio y streaming
 
-- [ ] Objetivo: mostrar respuestas como un chat moderno.
-  - [ ] Implementar `turn/start`.
-  - [ ] Escuchar `item/agentMessage/delta`.
-  - [ ] Escuchar `turn/completed`.
-  - [ ] Traducir eventos de Codex a eventos SSE propios.
-  - [ ] Crear `POST /api/chat/conversations/:id/messages`.
-  - [ ] Mostrar estado de carga, respuesta parcial y errores.
-  - [ ] Agregar cancelacion con `turn/interrupt` si resulta necesaria.
+- [x] Objetivo: mostrar respuestas como un chat moderno.
+  - [x] Implementar `turn/start`.
+  - [x] Escuchar `item/agentMessage/delta`.
+  - [x] Escuchar `turn/completed`.
+  - [x] Traducir eventos de Codex a eventos SSE propios.
+  - [x] Crear `POST /api/chat/conversations/:id/messages`.
+  - [x] Mostrar estado de carga, respuesta parcial y errores.
+  - [x] Agregar cancelacion con `turn/interrupt` si resulta necesaria.
 
   Criterio de finalizacion: el usuario envia una pregunta y ve la respuesta
   progresivamente sin esperar a que termine todo el turno.
@@ -644,6 +644,212 @@ Frontend (`distribuidora-front`):
   `/chat` bloquea el selector cuando no hay cuenta.
 - La ruta `/chat` de Etapa 3 es deliberadamente minimalista: la interfaz de
   chat completa (mensajes, historial, streaming) llega en la Etapa 7.
+
+## Fase 4 - Conversaciones e historial
+
+Estado al 10/08/2026. El usuario puede crear conversaciones, ver su historial
+y reabrir la aplicacion conservandolas. Criterio de finalizacion cumplido:
+el thread sobrevive al cierre del proceso y se vuelve a cargar con
+`thread/resume` + `thread/read`.
+
+### Persistencia local (decision de Fase 0)
+
+Se agrego la tabla `ChatConversation` en SQLite (via Prisma):
+
+```text
+ChatConversation
+- id                (local, autoincrement)
+- codexThreadId     (unique, id del thread de Codex)
+- title             (nombre de la conversacion)
+- selectedModel     (modelo con el que se creo)
+- createdAt / updatedAt
+```
+
+Los mensajes NO se guardan en la base local: se leen del historial de Codex
+via `thread/read` con `includeTurns: true`. El proyecto no usa migraciones
+Prisma (sin carpeta `migrations/`): se aplico `prisma db push` + `prisma
+generate`.
+
+### Implementacion
+
+Backend (`distribuidora-backend`):
+
+- `prisma/schema.prisma` - modelo `ChatConversation`.
+- `src/chat/codexProtocol.ts` - tipos de items de `thread/read`:
+  `CodexThreadItem` (`userMessage` con `content[]` y `agentMessage` con
+  `text`), y `CodexTurn.startedAt`.
+- `src/chat/conversationService.ts` (nuevo) - `ConversationService`:
+  - `list()`: filas locales ordenadas por `updatedAt` desc.
+  - `create({ model, title })`: valida el modelo, `thread/start` con
+    `sandbox: "read-only"` y guarda los metadatos. Titulo por defecto
+    "Nueva conversación".
+  - `read(id)`: metadatos + mensajes mapeados desde `thread/read`
+    (`userMessage` -> rol `user`, `agentMessage` -> rol `assistant`).
+    Si el titulo sigue siendo el por defecto, se reemplaza por el `preview`
+    que Codex conserva del thread.
+  - `resume(id, model?)`: valida el modelo, `thread/resume` y actualiza los
+    metadatos. Deja el thread listo para `turn/start` en la Etapa 5.
+  - Manejo de threads "frios": un thread creado por otra sesion de
+    `app-server` (por ejemplo tras reiniciar la app) falla `thread/read` con
+    `-32600`; se carga con `thread/resume` y se relee. Un thread sin turnos
+    ("not materialized yet" / "no rollout found") se devuelve con mensajes
+    vacios, que es el estado real.
+- `src/routes/chat.ts` - nuevas rutas:
+
+  ```text
+  GET  /api/chat/conversations            — historial local
+  POST /api/chat/conversations            — { model?, title? } -> 201 { conversation }
+  GET  /api/chat/conversations/:id        — { conversation, messages[], preview }
+  POST /api/chat/conversations/:id/resume — { model? } -> { conversation }
+  ```
+
+  Errores: 400 modelo invalido, 401 sin cuenta, 404 conversacion inexistente,
+  503 Codex no instalado.
+
+Frontend (`distribuidora-front`):
+
+- `src/lib/chat.ts` - tipos `ChatConversacion`, `ChatMensaje`,
+  `ChatConversacionDetalle` y funciones `obtenerConversacionesChat`,
+  `crearConversacionChat`, `obtenerConversacionChat`,
+  `reanudarConversacionChat` (esta ultima se usara en la Etapa 5).
+- `src/components/chat/Conversaciones.tsx` (nuevo) - lista de conversaciones
+  con titulo, fecha y modelo; boton "Nueva conversación"; estado vacio y
+  cargando.
+- `src/components/chat/Historial.tsx` (nuevo) - historial de una
+  conversacion: burbujas de usuario/asistente con hora, estados vacio,
+  cargando y error. El envio de mensajes llega en la Etapa 5.
+- `src/routes/chat.tsx` - al estar autenticado se cargan las conversaciones,
+  se puede crear una nueva con el modelo seleccionado y abrir cualquiera
+  para ver su historial.
+
+### Comportamiento verificado en vivo
+
+| Caso | Resultado |
+| --- | --- |
+| `POST /api/chat/conversations` con modelo | 201, thread creado en Codex y fila local asociada |
+| `POST /api/chat/conversations` sin modelo | Usa el modelo por defecto (`gpt-5.6-terra`) |
+| `GET /api/chat/conversations` | Lista por `updatedAt` desc con titulo, fechas y modelo |
+| `GET /api/chat/conversations/:id` | `messages` con rol user/assistant, texto y hora del turno; `preview` del thread |
+| Thread "frio" (otra sesion de app-server) | `thread/resume` lo carga y `thread/read` devuelve los turnos |
+| Thread sin turnos | `messages: []` sin error (el thread no se materializa hasta el primer turno) |
+| Titulo por defecto + preview del thread | Se reemplaza "Nueva conversación" por el primer mensaje |
+| Modelo invalido | HTTP 400 con mensaje accionable |
+| Conversacion inexistente | HTTP 404 |
+| Cierre y reapertura de la app | El thread materializado se vuelve a leer desde un proceso nuevo |
+
+### Notas
+
+- `thread/read` con `includeTurns: true` falla con `-32600` en threads sin
+  turnos: el thread solo se materializa en disco tras el primer `turn/start`.
+  Es el comportamiento esperado del app-server; la Etapa 5 lo cubre al enviar
+  el primer mensaje.
+- El titulo se deriva del `preview` que Codex guarda (primer mensaje del
+  thread) solo cuando el usuario no puso un titulo propio.
+- No se implementaron archivado ni eliminacion (Etapa 4 los define como
+  posteriores). El `DELETE /api/chat/conversations/:id` de la propuesta de
+  API queda pendiente junto con ellos.
+- `scripts/test-turn.ts` en el backend: utilidad de desarrollo que crea un
+  thread, le envia un turno real y deja la fila local, para probar Etapa 4/5.
+
+## Fase 5 - Envio y streaming
+
+Estado al 10/08/2026. El usuario envia una pregunta y ve la respuesta
+progresivamente sin esperar a que termine todo el turno. Criterio de
+finalizacion cumplido.
+
+### Contrato SSE de la aplicacion
+
+El frontend no conoce el protocolo interno de Codex. `POST
+/api/chat/conversations/:id/messages` responde con SSE de solo 4 eventos:
+
+```text
+message.start     — { turnId } al arrancar el turno (id para cancelar)
+message.delta     — { text } cada fragmento de texto del asistente
+message.completed — { turnId } el turno termino sin errores
+message.error     — { message } fallo, turno failed o generacion cancelada
+```
+
+Ademas se agrego `POST /api/chat/conversations/:id/cancel` con `{ turnId }`,
+que ejecuta `turn/interrupt` para cancelar una generacion en curso.
+
+### Implementacion
+
+Backend (`distribuidora-backend`):
+
+- `src/chat/chatStreamService.ts` (nuevo) - `ChatStreamService` que traduce un
+  turno a eventos SSE:
+  - Se suscribe a los eventos del thread ANTES de enviar `turn/start` para no
+    perder ningun delta (los deltas que llegan antes del arranque se encolan).
+  - `turn/start` se envia con timeout propio de 10 minutos (la respuesta llega
+    cuando el turno arranca, no cuando termina).
+  - `turn/started` registra el `turnId`; `item/agentMessage/delta` se traduce a
+    `message.delta`; `turn/completed` cierra con `message.completed` o
+    `message.error` segun su estado (`failed`, `interrupted`).
+  - La notificacion `error` (rate limits, fallos) corta con `message.error` e
+    interrumpe el turno: la app no reintenta, asi se evita gastar tokens en un
+    reintento invisible.
+  - Devuelve un controlador de cancelacion que la ruta ejecuta si el cliente
+    se desconecta a mitad de turno.
+- `src/chat/jsonrpc.ts` - `request(method, params, timeoutMs)` con timeout
+  configurable por request.
+- `src/chat/codexProtocol.ts` - correccion de tipos verificada contra el
+  schema generado: `item/started` y `item/completed` llevan el item completo
+  en `item` (no `itemId`); `Turn.status` es un string literal
+  (`completed | interrupted | failed | inProgress`), no un objeto `{ type }`
+  como `Thread.status`. Se agrego la notificacion `error`.
+- `src/chat/codexService.ts` - `startTurn` con timeout propio y decodificacion
+  de la notificacion `error`.
+- `src/chat/conversationService.ts` - `get(id)` para validar la conversacion
+  antes de abrir el stream.
+- `src/routes/chat.ts` - `POST .../messages` (SSE con `reply.hijack()`):
+  valida la conversacion y el mensaje como JSON (404/400), reanuda el thread,
+  y de ahi en mas todo error se reporta por SSE. Al terminar el turno
+  actualiza `updatedAt` y cierra la respuesta. Timeout total de 10 minutos.
+  `POST .../cancel` para `turn/interrupt`.
+
+Frontend (`distribuidora-front`):
+
+- `src/lib/chat.ts` - `enviarMensajeChat(id, message, onEvent, signal)` lee el
+  SSE con `fetch` + `ReadableStream`, parsea los frames y emite los 4 eventos
+  tipados. `cancelarTurnoChat(id, turnId)` para interrumpir.
+- `src/components/chat/Historial.tsx` - textarea con Enter/Shift+Enter, burbuja
+  del asistente con cursor parpadeante mientras genera, boton para detener la
+  generacion, errores de envio inline y auto-scroll al fondo.
+- `src/routes/chat.tsx` - estado del envio: agrega el mensaje del usuario de
+  forma optimista, acumula los deltas en la burbuja del asistente, al terminar
+  recarga el historial real desde el backend, y al cancelar o cambiar de
+  conversacion aborta el fetch e interrumpe el turno.
+
+### Comportamiento verificado en vivo
+
+| Caso | Resultado |
+| --- | --- |
+| `POST .../messages` con pregunta corta | `message.start` con `turnId`, deltas parciales y `message.completed` con el mismo `turnId` |
+| Respuesta larga (ensayo de miles de palabras) | Cientos de deltas sin cortes; stream cerrado por el backend al terminar |
+| `POST .../cancel` a mitad de turno | El turno se interrumpe; el SSE cierra con `message.error` "La generación fue cancelada." |
+| `turn/interrupt` directo | `turn/completed` llega con `status: "interrupted"` |
+| Mensaje vacio | HTTP 400 JSON sin abrir el stream |
+| Conversacion inexistente | HTTP 404 JSON sin abrir el stream |
+| Historial tras varios turnos | Los mensajes user/assistant persisten y se releen con `thread/read`; el turno cancelado queda solo con el mensaje del usuario |
+| CORS preflight (frontend en :3000, backend en :3001) | 204 con headers permitidos |
+| Timeout de 10 minutos | No probado en vivo (tardaria demasiado); se probo la logica de cierre |
+
+### Notas
+
+- Bug corregido en vivo: `onDone` cerraba la respuesta SSE antes de escribir
+  el evento terminal, por lo que `message.completed` se perdia. El orden
+  correcto es evento terminal -> cierre.
+- Bug de tipos corregido en vivo: `Turn.status` es un string, no `{ type }`.
+  Con el tipo viejo, `turn/completed` con `status: "interrupted"` se tradujo
+  como completado (el cancel parecia no funcionar).
+- La DB de desarrollo no tenia la tabla `ChatConversation` (la fase 4 se
+  habia verificado contra otra base): se aplico `prisma db push` con
+  `DATABASE_URL="file:./distribuidora.db"` (relativa al schema).
+- Un turno que el usuario no cancela y tarda mas de 10 minutos se corta con
+  `message.error` y `turn/interrupt` (proteccion contra respuestas colgadas).
+- Los comentarios del asistente que no son la respuesta final (fases
+  commentary) se muestran como mensajes de asistente en el historial; la
+  Etapa 7 puede resumirlos u ocultarlos.
 
 ## Referencias
 
