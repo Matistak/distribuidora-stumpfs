@@ -40,6 +40,8 @@ export function UploadPanel({
     try {
       if (backendConectado()) {
         const carga = await subirExcel(file);
+        // Evita que una respuesta de un backend anterior rompa el resumen.
+        const errores = Array.isArray(carga.errores) ? carga.errores : [];
         const estado = carga.estado.trim().toLowerCase();
         const tieneError = ["error", "fallido", "fallida", "rechazado", "rechazada"].some(
           (palabra) => estado.includes(palabra),
@@ -52,7 +54,7 @@ export function UploadPanel({
           filasOmitidas: carga.filasOmitidas,
           filasErrores: carga.filasErrores,
           sinErrores: !tieneError,
-          errores: carga.errores,
+          errores,
           ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         });
         if (tieneError) {

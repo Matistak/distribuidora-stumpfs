@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Bot, Loader2, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChatPanel } from "@/components/chat/ChatPanel";
-import { backendConectado, mensajeError } from "@/lib/api";
+import { APP_MODE, backendConectado, mensajeError } from "@/lib/api";
 import {
   CHAT_MODEL_KEY,
   cancelarTurnoChat,
@@ -26,6 +26,9 @@ import {
 } from "@/lib/chat";
 
 export const Route = createFileRoute("/chat")({
+  beforeLoad: () => {
+    if (APP_MODE !== "back") throw redirect({ to: "/" });
+  },
   component: ChatPage,
 });
 

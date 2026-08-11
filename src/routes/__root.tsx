@@ -24,6 +24,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { APP_MODE } from "@/lib/api";
 import { UploadStateProvider } from "@/lib/upload-state";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
@@ -158,12 +159,14 @@ function AppSidebar() {
                 icon={ClipboardList}
                 active={pathname.startsWith("/ventas")}
               />
-              <SidebarNavItem
-                to="/chat"
-                label="Asistente IA"
-                icon={Bot}
-                active={pathname.startsWith("/chat")}
-              />
+              {APP_MODE === "back" && (
+                <SidebarNavItem
+                  to="/chat"
+                  label="Asistente IA"
+                  icon={Bot}
+                  active={pathname.startsWith("/chat")}
+                />
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
