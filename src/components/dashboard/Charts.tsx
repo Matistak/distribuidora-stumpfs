@@ -66,30 +66,87 @@ export function EvolucionDiaria({ data }: { data: SeriePunto[] }) {
   );
 }
 
-export function RankingBarras({ data, height = 300 }: { data: RankingItem[]; height?: number }) {
+export function RankingBarras({
+  data,
+  height = 300,
+  horizontal = true,
+}: {
+  data: RankingItem[];
+  height?: number;
+  /** true: barras horizontales; false: barras verticales */
+  horizontal?: boolean;
+}) {
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-        <XAxis
-          type="number"
-          tickFormatter={fmtCompact}
-          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-        />
-        <YAxis
-          type="category"
-          dataKey="nombre"
-          width={155}
-          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-        />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          formatter={(v: number) => [fmtGs(v), "Venta neta"]}
-          cursor={{ fill: "var(--muted)" }}
-        />
-        <Bar dataKey="valor" fill="var(--chart-1)" radius={[0, 4, 4, 0]} maxBarSize={18} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="min-w-0">
+      <ResponsiveContainer width="100%" height={height} minWidth={0}>
+        <BarChart
+          data={data}
+          layout={horizontal ? "vertical" : "horizontal"}
+          margin={
+            horizontal
+              ? { top: 0, right: 16, left: 8, bottom: 0 }
+              : { top: 0, right: 8, left: 0, bottom: 52 }
+          }
+          barCategoryGap={horizontal ? 8 : "10%"}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="var(--border)"
+            horizontal={!horizontal}
+            vertical={horizontal}
+          />
+          {horizontal ? (
+            <XAxis
+              type="number"
+              domain={[0, "dataMax"]}
+              tickFormatter={fmtCompact}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            />
+          ) : (
+            <XAxis
+              dataKey="nombre"
+              interval={0}
+              height={52}
+              angle={-35}
+              textAnchor="end"
+              tickMargin={8}
+              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+              tickFormatter={(nombre: string) =>
+                nombre.length > 14 ? `${nombre.slice(0, 13)}…` : nombre
+              }
+            />
+          )}
+          {horizontal ? (
+            <YAxis
+              type="category"
+              dataKey="nombre"
+              interval={0}
+              width={155}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            />
+          ) : (
+            <YAxis
+              tickFormatter={fmtCompact}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              width={52}
+            />
+          )}
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(v: number) => [fmtGs(v), "Venta neta"]}
+            labelFormatter={(label, payload) => payload?.[0]?.payload?.nombre ?? label}
+            cursor={false}
+          />
+          <Bar
+            dataKey="valor"
+            fill="var(--chart-1)"
+            radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}
+            maxBarSize={horizontal ? 18 : 28}
+            isAnimationActive={false}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   FileSpreadsheet,
   Truck,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -105,6 +106,9 @@ function RootComponent() {
               <SidebarTrigger />
               <span className="text-sm font-semibold">Distribuidora Stumpfs</span>
             </div>
+            <div className="hidden h-14 items-center border-b border-border bg-card px-4 md:flex">
+              <SidebarTrigger />
+            </div>
             <Outlet />
           </div>
         </SidebarInset>
@@ -117,13 +121,13 @@ function AppSidebar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-3 px-2 py-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+        <div className="flex items-center gap-3 px-2 py-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:size-8">
             <Truck className="size-5" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate font-display text-base font-bold text-sidebar-primary">
               Stumpfs SA
             </p>
@@ -148,16 +152,16 @@ function AppSidebar() {
                 active={pathname === "/"}
               />
               <SidebarNavItem
-                to="/carga"
-                label="Cargar Excel"
-                icon={FileSpreadsheet}
-                active={pathname.startsWith("/carga")}
-              />
-              <SidebarNavItem
                 to="/ventas"
                 label="Ventas"
                 icon={ClipboardList}
                 active={pathname.startsWith("/ventas")}
+              />
+              <SidebarNavItem
+                to="/vendedores"
+                label="Vendedores"
+                icon={UserRound}
+                active={pathname.startsWith("/vendedores")}
               />
               {APP_MODE === "back" && (
                 <SidebarNavItem
@@ -170,14 +174,30 @@ function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel className="text-[10px] font-bold uppercase tracking-[0.16em] text-sidebar-foreground/50">
+            Carga de datos
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarNavItem
+                to="/carga"
+                label="Cargar Excel"
+                icon={FileSpreadsheet}
+                active={pathname.startsWith("/carga")}
+              />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
-      <div className="mt-auto border-t border-sidebar-border p-4">
+      <div className="mt-auto border-t border-sidebar-border p-4 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2">
         <div className="flex items-center gap-3">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground">
             JS
           </span>
-          <div className="min-w-0 text-xs">
+          <div className="min-w-0 text-xs group-data-[collapsible=icon]:hidden">
             <p className="truncate font-semibold text-sidebar-foreground">Pedro Stumpfs</p>
             <p className="truncate text-sidebar-foreground/60">Director General</p>
           </div>
@@ -193,7 +213,7 @@ function SidebarNavItem({
   icon: Icon,
   active,
 }: {
-  to: "/" | "/carga" | "/ventas" | "/chat";
+  to: "/" | "/carga" | "/ventas" | "/vendedores" | "/chat";
   label: string;
   icon: LucideIcon;
   active: boolean;

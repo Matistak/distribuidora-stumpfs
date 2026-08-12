@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,17 +14,17 @@ import {
   enviarMensajeChat,
   nombreHerramienta,
   obtenerConversacionChat,
-  obtenerConversacionesChat,
-  obtenerEstadoChat,
-  obtenerModelosChat,
   reiniciarCodex,
   type ChatConversacion,
-  type ChatConversacionDetalle,
   type ChatMensaje,
-  type ChatModel,
   type ChatSseEvent,
   type ChatStatus,
 } from "@/lib/chat";
+import {
+  chatEstadoQueryOptions,
+  conversacionQueryOptions,
+  conversacionesQueryOptions,
+} from "@/lib/queries";
 
 export const Route = createFileRoute("/chat")({
   beforeLoad: () => {
@@ -34,27 +35,11 @@ export const Route = createFileRoute("/chat")({
 
 function ChatPage() {
   const backend = backendConectado();
-  const [status, setStatus] = useState<ChatStatus | null>(null);
-  const [modelos, setModelos] = useState<ChatModel[]>([]);
-  const [defaultModel, setDefaultModel] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [seleccionado, setSeleccionado] = useState<string | null>(() =>
     localStorage.getItem(CHAT_MODEL_KEY),
   );
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string>();
-  const [reinicando, setReiniciando] = useState(false);
-
-  const [conversaciones, setConversaciones] = useState<ChatConversacion[]>([]);
-  const [conversacionesCargando, setConversacionesCargando] = useState(false);
-  const [conversacionesError, setConversacionesError] = useState<string>();
-  const [creando, setCreando] = useState(false);
-  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
-  const [eliminandoError, setEliminandoError] = useState<string>();
-
   const [seleccionadoId, setSeleccionadoId] = useState<number | null>(null);
-  const [detalle, setDetalle] = useState<ChatConversacionDetalle | null>(null);
-  const [detalleCargando, setDetalleCargando] = useState(false);
-  const [detalleError, setDetalleError] = useState<string>();
 
   // Etapa 5: envio y streaming de mensajes.
   const [mensajes, setMensajes] = useState<ChatMensaje[]>([]);
@@ -72,85 +57,70 @@ function ChatPage() {
     seleccionadoRef.current = seleccionadoId;
   }, [seleccionadoId]);
 
-  useEffect(() => {
-    if (!backend) {
-      setCargando(false);
-      return;
-    }
+  const estadoQuery = useQuery({ ...chatEstadoQueryOptions(), enabled: backend });
+  const status = estadoQuery.data?.status ?? null;
+  const modelos = useMemo(() => estadoQuery.data?.modelos ?? [], [estadoQuery.data]);
+  const defaultModel = estadoQuery.data?.defaultModel ?? null;
+  const cargando = estadoQuery.isPending;
 
-    let activo = true;
-    setCargando(true);
-    setError(undefined);
+  const reiniciarMutation = useMutation({
+    mutationFn: () => reiniciarCodex(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["chat", "estado"] });
+    },
+  });
+  const reiniciando = reiniciarMutation.isPending;
+  const error = estadoQuery.isError
+    ? mensajeError(estadoQuery.error, "No se pudo conectar con el chat.")
+    : reiniciarMutation.isError
+      ? mensajeError(reiniciarMutation.error, "No se pudo reiniciar Codex.")
+      : undefined;
 
-    Promise.all([obtenerEstadoChat(), obtenerModelosChat()])
-      .then(([estado, respuesta]) => {
-        if (!activo) return;
-        setStatus(estado);
-        setModelos(respuesta.models);
-        setDefaultModel(respuesta.defaultModel);
-      })
-      .catch((cause: unknown) => {
-        if (activo) setError(mensajeError(cause, "No se pudo conectar con el chat."));
-      })
-      .finally(() => {
-        if (activo) setCargando(false);
-      });
+  const crearMutation = useMutation({
+    mutationFn: (model: string) => crearConversacionChat({ model }),
+    onSuccess: async ({ conversation }) => {
+      await queryClient.invalidateQueries({ queryKey: ["chat", "conversaciones"] });
+      setSeleccionadoId(conversation.id);
+    },
+  });
+  const creando = crearMutation.isPending;
 
-    return () => {
-      activo = false;
-    };
-  }, [backend]);
+  const conversacionesQuery = useQuery({
+    ...conversacionesQueryOptions(),
+    enabled: backend && Boolean(status?.authenticated),
+  });
+  const conversaciones = conversacionesQuery.data ?? [];
+  const conversacionesCargando = conversacionesQuery.isFetching;
+  const conversacionesError = conversacionesQuery.isError
+    ? mensajeError(conversacionesQuery.error, "No se pudieron cargar las conversaciones.")
+    : crearMutation.isError
+      ? mensajeError(crearMutation.error, "No se pudo crear la conversación.")
+      : undefined;
 
-  useEffect(() => {
-    if (!backend || !status?.authenticated) return;
+  const detalleQuery = useQuery(conversacionQueryOptions(seleccionadoId));
+  const detalle = detalleQuery.data ?? null;
+  const detalleCargando = detalleQuery.isFetching;
+  const detalleError = detalleQuery.isError
+    ? mensajeError(detalleQuery.error, "No se pudo leer la conversación.")
+    : undefined;
 
-    let activo = true;
-    setConversacionesCargando(true);
-    setConversacionesError(undefined);
-
-    obtenerConversacionesChat()
-      .then(({ conversations }) => {
-        if (activo) setConversaciones(conversations);
-      })
-      .catch((cause: unknown) => {
-        if (activo)
-          setConversacionesError(mensajeError(cause, "No se pudieron cargar las conversaciones."));
-      })
-      .finally(() => {
-        if (activo) setConversacionesCargando(false);
-      });
-
-    return () => {
-      activo = false;
-    };
-  }, [backend, status?.authenticated]);
-
-  useEffect(() => {
-    if (seleccionadoId === null) return;
-
-    let activo = true;
-    setDetalleCargando(true);
-    setDetalleError(undefined);
-
-    obtenerConversacionChat(seleccionadoId)
-      .then((detalle) => {
-        if (!activo) return;
-        setDetalle(detalle);
-        setConversaciones((prev) =>
-          prev.map((c) => (c.id === detalle.conversation.id ? detalle.conversation : c)),
-        );
-      })
-      .catch((cause: unknown) => {
-        if (activo) setDetalleError(mensajeError(cause, "No se pudo leer la conversación."));
-      })
-      .finally(() => {
-        if (activo) setDetalleCargando(false);
-      });
-
-    return () => {
-      activo = false;
-    };
-  }, [seleccionadoId]);
+  const eliminarMutation = useMutation({
+    mutationFn: (id: number) => eliminarConversacionChat(id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData(
+        conversacionesQueryOptions().queryKey,
+        (prev?: ChatConversacion[]) => prev?.filter((c) => c.id !== id) ?? [],
+      );
+      if (seleccionadoRef.current === id) {
+        setSeleccionadoId(null);
+        seleccionadoRef.current = null;
+      }
+    },
+  });
+  const eliminandoId = eliminarMutation.isPending ? (eliminarMutation.variables ?? null) : null;
+  const eliminandoError = eliminarMutation.isError
+    ? mensajeError(eliminarMutation.error, "No se pudo borrar la conversación.")
+    : undefined;
 
   // El historial mostrado se sincroniza con el detalle cargado (y con lo que
   // el streaming agrega de forma optimista).
@@ -173,10 +143,12 @@ function ChatPage() {
   const refrescarConversacion = async (conversacionId: number) => {
     try {
       const nuevo = await obtenerConversacionChat(conversacionId);
-      setConversaciones((prev) =>
-        prev.map((c) => (c.id === conversacionId ? nuevo.conversation : c)),
+      queryClient.setQueryData(conversacionQueryOptions(conversacionId).queryKey, nuevo);
+      queryClient.setQueryData(
+        conversacionesQueryOptions().queryKey,
+        (prev?: ChatConversacion[]) =>
+          prev?.map((c) => (c.id === conversacionId ? nuevo.conversation : c)) ?? [],
       );
-      if (seleccionadoRef.current === conversacionId) setDetalle(nuevo);
     } catch {
       // El historial se sincronizara al reabrir la conversacion.
     }
@@ -273,37 +245,14 @@ function ChatPage() {
     localStorage.setItem(CHAT_MODEL_KEY, id);
   };
 
-  const reiniciar = async () => {
-    if (reinicando) return;
-    setReiniciando(true);
-    setError(undefined);
-    try {
-      await reiniciarCodex();
-      const [estado, respuesta] = await Promise.all([obtenerEstadoChat(), obtenerModelosChat()]);
-      setStatus(estado);
-      setModelos(respuesta.models);
-      setDefaultModel(respuesta.defaultModel);
-    } catch (cause: unknown) {
-      setError(mensajeError(cause, "No se pudo reiniciar Codex."));
-    } finally {
-      setReiniciando(false);
-    }
+  const onReiniciar = () => {
+    reiniciarMutation.reset();
+    reiniciarMutation.mutate();
   };
 
-  const crearConversacion = async () => {
+  const onCrear = () => {
     if (creando || !modeloElegido) return;
-    setCreando(true);
-    setConversacionesError(undefined);
-    try {
-      const { conversation } = await crearConversacionChat({ model: modeloElegido });
-      const { conversations } = await obtenerConversacionesChat();
-      setConversaciones(conversations);
-      setSeleccionadoId(conversation.id);
-    } catch (cause: unknown) {
-      setConversacionesError(mensajeError(cause, "No se pudo crear la conversación."));
-    } finally {
-      setCreando(false);
-    }
+    crearMutation.mutate(modeloElegido);
   };
 
   const seleccionarConversacion = (id: number) => {
@@ -319,23 +268,9 @@ function ChatPage() {
     seleccionadoRef.current = id;
   };
 
-  const eliminarConversacion = async (id: number) => {
+  const onEliminar = (id: number) => {
     if (eliminandoId !== null) return;
-    setEliminandoId(id);
-    setEliminandoError(undefined);
-    try {
-      await eliminarConversacionChat(id);
-      setConversaciones((prev) => prev.filter((c) => c.id !== id));
-      if (seleccionadoRef.current === id) {
-        setSeleccionadoId(null);
-        seleccionadoRef.current = null;
-        setDetalle(null);
-      }
-    } catch (cause: unknown) {
-      setEliminandoError(mensajeError(cause, "No se pudo borrar la conversación."));
-    } finally {
-      setEliminandoId(null);
-    }
+    eliminarMutation.mutate(id);
   };
 
   return (
@@ -379,10 +314,10 @@ function ChatPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={reiniciar}
-              disabled={reinicando}
+              onClick={onReiniciar}
+              disabled={reiniciando}
             >
-              {reinicando ? <Loader2 className="size-4 animate-spin" /> : <RefreshCcw />}
+              {reiniciando ? <Loader2 className="size-4 animate-spin" /> : <RefreshCcw />}
               Reintentar
             </Button>
           </section>
@@ -390,7 +325,7 @@ function ChatPage() {
 
         {backend && !cargando && !error && status && (
           <>
-            <EstadoCodex status={status} reiniciando={reinicando} onReiniciar={reiniciar} />
+            <EstadoCodex status={status} reiniciando={reiniciando} onReiniciar={onReiniciar} />
 
             {!status.installed && <InstruccionesInstalacion codex={status} />}
 
@@ -406,10 +341,10 @@ function ChatPage() {
                 conversacionesCargando={conversacionesCargando}
                 conversacionesError={conversacionesError}
                 creando={creando}
-                onCrear={crearConversacion}
+                onCrear={onCrear}
                 eliminandoId={eliminandoId}
                 eliminandoError={eliminandoError}
-                onEliminar={eliminarConversacion}
+                onEliminar={onEliminar}
                 seleccionadoId={seleccionadoId}
                 onSeleccionar={seleccionarConversacion}
                 detalle={detalle}

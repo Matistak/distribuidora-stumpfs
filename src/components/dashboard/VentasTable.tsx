@@ -1,24 +1,86 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useQuery } from "@tanstack/react-query";
+import { ClipboardList } from "lucide-react";
+
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { aplicarFiltros, fmtGs, fmtNum } from "@/lib/metrics";
-import { listarVentas, mensajeError } from "@/lib/api";
+import { mensajeError } from "@/lib/api";
+import { ventasQueryOptions } from "@/lib/queries";
 import type { Filtros, VentaRow } from "@/lib/types";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 10;
 
-type ResultadoVentas = {
-  data: VentaRow[];
-  total: number;
-};
+const columnas: DataTableColumn<VentaRow>[] = [
+  {
+    id: "venta-neta",
+    header: "Venta neta",
+    width: "w-[170px]",
+    headerClassName: "bg-primary/10 text-right text-primary",
+    className:
+      "whitespace-nowrap bg-primary/[0.035] text-right font-semibold tabular-nums text-primary",
+    cell: (row) => fmtGs(row.montoVtaNetaGua),
+  },
+  {
+    id: "documento",
+    header: "Documento",
+    width: "w-[130px]",
+    className: "whitespace-nowrap",
+    cell: (row) => (
+      <>
+        <div className="font-semibold text-foreground">{row.nroDoc}</div>
+        <div className="text-[11px] text-muted-foreground">{row.tipoDoc ?? "Sin tipo"}</div>
+      </>
+    ),
+  },
+  {
+    id: "cliente",
+    header: "Cliente",
+    width: "w-[220px]",
+    className: "max-w-56 truncate",
+    cell: (row) => row.razonSocial ?? "Sin cliente",
+  },
+  {
+    id: "producto",
+    header: "Producto",
+    width: "w-[240px]",
+    className: "max-w-60 truncate",
+    cell: (row) => row.producto ?? "Sin producto",
+  },
+  {
+    id: "vendedor",
+    header: "Vendedor",
+    width: "w-[170px]",
+    className: "whitespace-nowrap",
+    cell: (row) => row.vendedor ?? "Sin vendedor",
+  },
+  {
+    id: "canal",
+    header: "Canal",
+    width: "w-[120px]",
+    cell: (row) => row.canal ?? "Sin canal",
+  },
+  {
+    id: "ciudad",
+    header: "Ciudad",
+    width: "w-[140px]",
+    cell: (row) => row.ciudad ?? "Sin ciudad",
+  },
+  {
+    id: "unidades",
+    header: "Unidades",
+    width: "w-[100px]",
+    headerClassName: "text-right",
+    className: "text-right tabular-nums",
+    cell: (row) => fmtNum(row.vtaUnit),
+  },
+  {
+    id: "fecha",
+    header: "Fecha",
+    width: "w-[110px]",
+    className: "whitespace-nowrap",
+    cell: (row) => row.fecha,
+  },
+];
 
 export function VentasTable({
   backend,
@@ -30,9 +92,16 @@ export function VentasTable({
   rows: VentaRow[];
 }) {
   const [pagina, setPagina] = useState(1);
-  const [resultado, setResultado] = useState<ResultadoVentas>({ data: [], total: 0 });
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string>();
+
+  const ventasQuery = useQuery({
+    ...ventasQueryOptions(filtros, pagina, PAGE_SIZE),
+    enabled: backend,
+  });
+  const resultado = ventasQuery.data ?? { data: [], total: 0 };
+  const cargando = ventasQuery.isFetching;
+  const error = ventasQuery.isError
+    ? mensajeError(ventasQuery.error, "No fue posible obtener las ventas. Intentá nuevamente.")
+    : undefined;
 
   const filasLocales = useMemo(() => aplicarFiltros(rows, filtros), [rows, filtros]);
   const total = backend ? resultado.total : filasLocales.length;
@@ -55,31 +124,6 @@ export function VentasTable({
   ]);
 
   useEffect(() => {
-    if (!backend) return;
-
-    let activo = true;
-    setCargando(true);
-    setError(undefined);
-
-    listarVentas({ ...filtros, page: pagina, pageSize: PAGE_SIZE })
-      .then((data) => {
-        if (activo) setResultado(data);
-      })
-      .catch((cause: unknown) => {
-        if (activo) {
-          setError(mensajeError(cause, "No fue posible obtener las ventas. Intentá nuevamente."));
-        }
-      })
-      .finally(() => {
-        if (activo) setCargando(false);
-      });
-
-    return () => {
-      activo = false;
-    };
-  }, [backend, filtros, pagina]);
-
-  useEffect(() => {
     if (pagina > paginas) setPagina(paginas);
   }, [pagina, paginas]);
 
@@ -87,104 +131,28 @@ export function VentasTable({
   const hasta = Math.min(pagina * PAGE_SIZE, total);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold">Ventas detalladas</h2>
-          <p className="text-xs text-muted-foreground">
-            {total > 0
-              ? `Mostrando ${fmtNum(desde)}–${fmtNum(hasta)} de ${fmtNum(total)} registros`
-              : "No hay ventas para los filtros seleccionados"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={pagina <= 1 || cargando}
-            onClick={() => setPagina((actual) => actual - 1)}
-            aria-label="Página anterior"
-          >
-            <ChevronLeft />
-            Anterior
-          </Button>
-          <span className="min-w-20 text-center text-xs text-muted-foreground">
-            {pagina} / {paginas}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={pagina >= paginas || cargando}
-            onClick={() => setPagina((actual) => actual + 1)}
-            aria-label="Página siguiente"
-          >
-            Siguiente
-            <ChevronRight />
-          </Button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Documento</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Producto</TableHead>
-              <TableHead>Vendedor</TableHead>
-              <TableHead>Canal</TableHead>
-              <TableHead>Ciudad</TableHead>
-              <TableHead className="text-right">Unidades</TableHead>
-              <TableHead className="text-right">Venta neta gua</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {cargando ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="size-4 animate-spin" /> Cargando ventas...
-                  </span>
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-destructive">
-                  {error}
-                </TableCell>
-              </TableRow>
-            ) : filas.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                  No hay resultados.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filas.map((row, index) => (
-                <TableRow key={`${row.nroDoc}-${row.codProducto}-${row.nroComprobante}-${index}`}>
-                  <TableCell className="whitespace-nowrap">{row.fecha}</TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <div className="font-medium">{row.nroDoc}</div>
-                    <div className="text-xs text-muted-foreground">{row.tipoDoc}</div>
-                  </TableCell>
-                  <TableCell className="max-w-48 truncate">{row.razonSocial}</TableCell>
-                  <TableCell className="max-w-56 truncate">{row.producto}</TableCell>
-                  <TableCell className="whitespace-nowrap">{row.vendedor}</TableCell>
-                  <TableCell>{row.canal}</TableCell>
-                  <TableCell>{row.ciudad}</TableCell>
-                  <TableCell className="text-right">{fmtNum(row.vtaUnit)}</TableCell>
-                  <TableCell className="whitespace-nowrap text-right font-medium">
-                    {fmtGs(row.montoVtaNetaGua)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </section>
+    <DataTable
+      title="Ventas detalladas"
+      subtitle={
+        total > 0
+          ? `Mostrando ${fmtNum(desde)}–${fmtNum(hasta)} de ${fmtNum(total)} registros`
+          : "No hay ventas para los filtros seleccionados"
+      }
+      icon={ClipboardList}
+      columns={columnas}
+      rows={filas}
+      getRowKey={(row, index) => `${row.nroDoc}-${row.codProducto}-${row.nroComprobante}-${index}`}
+      stickyColumnId="venta-neta"
+      pagination={{
+        page: pagina,
+        pages: paginas,
+        onPageChange: setPagina,
+        disabled: cargando,
+      }}
+      loading={cargando}
+      loadingRows={8}
+      error={error}
+      minWidth="min-w-[1300px]"
+    />
   );
 }

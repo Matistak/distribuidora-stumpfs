@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { FileSpreadsheet } from "lucide-react";
 
 import { UploadPanel } from "@/components/dashboard/UploadPanel";
 import { useUploadState } from "@/lib/use-upload-state";
-import { backendConectado } from "@/lib/api";
+import { backendConectado, type UploadResponse } from "@/lib/api";
+import { invalidarDatosComerciales } from "@/lib/queries";
 
 export const Route = createFileRoute("/carga")({
   component: CargaPage,
@@ -11,7 +13,13 @@ export const Route = createFileRoute("/carga")({
 
 function CargaPage() {
   const backend = backendConectado();
+  const queryClient = useQueryClient();
   const { archivo, filasCargadas, registrarDatos, registrarCarga } = useUploadState();
+
+  const onCarga = async (carga: UploadResponse) => {
+    registrarCarga(carga);
+    await invalidarDatosComerciales(queryClient);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,7 +53,7 @@ function CargaPage() {
             <UploadPanel
               className="flex min-h-72 items-center justify-center p-8"
               {...(backend ? {} : { onDatos: registrarDatos })}
-              onCarga={registrarCarga}
+              onCarga={onCarga}
               archivo={archivo}
               filas={filasCargadas}
             />

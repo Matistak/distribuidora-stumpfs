@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,104 +11,69 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { clientesQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-const DEBOUNCE_MS = 300;
+function separarCliente(cliente: string) {
+  const separador = cliente.indexOf(" - ");
 
-type EventoClick = {
-  preventDefault: () => void;
-  stopPropagation: () => void;
-};
+  if (separador === -1) return { razonSocial: cliente, ruc: undefined };
+
+  return {
+    razonSocial: cliente.slice(separador + 3),
+    ruc: cliente.slice(0, separador),
+  };
+}
 
 export function FiltroCliente({
   placeholder,
   valor,
-  buscar,
   onChange,
+  opciones,
+  backend,
+  className,
 }: {
   placeholder: string;
   valor?: string | undefined;
-  /** Fuente de sugerencias; se consulta con el texto filtrado. */
-  buscar: (q: string) => Promise<string[]>;
   onChange: (valor: string | undefined) => void;
+  opciones: string[];
+  backend: boolean;
+  className?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
-  const [texto, setTexto] = useState(valor ?? "");
-  const [resultados, setResultados] = useState<string[]>([]);
-  const [buscando, setBuscando] = useState(false);
-  const onChangeRef = useRef(onChange);
-  const buscarRef = useRef(buscar);
-  const timerRef = useRef<number | undefined>(undefined);
-  const requestRef = useRef(0);
+  const [busqueda, setBusqueda] = useState("");
+  const [busquedaDebounced, setBusquedaDebounced] = useState("");
 
   useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+    const timeout = window.setTimeout(() => setBusquedaDebounced(busqueda.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [busqueda]);
 
-  useEffect(() => {
-    buscarRef.current = buscar;
-  }, [buscar]);
-
-  useEffect(() => {
-    setTexto(valor ?? "");
-  }, [valor]);
-
-  useEffect(() => () => window.clearTimeout(timerRef.current), []);
-
-  const cargarResultados = (q: string) => {
-    const id = ++requestRef.current;
-    setBuscando(true);
-    buscarRef
-      .current(q)
-      .then((r) => {
-        if (requestRef.current === id) setResultados(r);
-      })
-      .catch(() => {
-        if (requestRef.current === id) setResultados([]);
-      })
-      .finally(() => {
-        if (requestRef.current === id) setBuscando(false);
-      });
-  };
-
-  const cancelarPendientes = () => {
-    window.clearTimeout(timerRef.current);
-    timerRef.current = undefined;
-    requestRef.current++;
-  };
-
-  const alEscribir = (q: string) => {
-    setTexto(q);
-    window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => {
-      timerRef.current = undefined;
-      const qFinal = q.trim();
-      onChangeRef.current(qFinal || undefined);
-      void cargarResultados(qFinal);
-    }, DEBOUNCE_MS);
-  };
+  const clientesQuery = useQuery({
+    ...clientesQueryOptions(busquedaDebounced),
+    enabled: backend,
+  });
+  const buscando = backend && (busqueda.trim() !== busquedaDebounced || clientesQuery.isFetching);
+  const opcionesVisibles = backend ? (buscando ? [] : (clientesQuery.data ?? [])) : opciones;
 
   const alSeleccionar = (cliente: string) => {
-    cancelarPendientes();
-    setTexto(cliente);
-    onChangeRef.current(cliente);
+    onChange(cliente);
     setAbierto(false);
+    setBusqueda("");
   };
 
-  const alLimpiar = (event?: EventoClick) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    cancelarPendientes();
-    setTexto("");
-    onChangeRef.current(undefined);
+  const alLimpiar = (event: MouseEvent<HTMLSpanElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onChange(undefined);
   };
 
   return (
     <Popover
       open={abierto}
-      onOpenChange={(abrir) => {
-        setAbierto(abrir);
-        if (abrir) void cargarResultados(texto.trim());
+      onOpenChange={(siguiente) => {
+        setAbierto(siguiente);
+        if (siguiente) setBusqueda("");
       }}
     >
       <PopoverTrigger asChild>
@@ -116,7 +82,7 @@ export function FiltroCliente({
           variant="outline"
           role="combobox"
           aria-expanded={abierto}
-          className="h-9 w-[220px] justify-between text-xs font-normal"
+          className={cn("h-9 w-[220px] justify-between text-xs font-normal", className)}
         >
           <span className={cn("truncate", !valor && "text-muted-foreground")}>
             {valor ? valor : placeholder}
@@ -130,7 +96,7 @@ export function FiltroCliente({
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  alLimpiar();
+                  onChange(undefined);
                 }
               }}
               className="grid size-4 shrink-0 cursor-pointer place-items-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -142,33 +108,55 @@ export function FiltroCliente({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[260px] p-0" align="start">
-        <Command>
-          <CommandInput value={texto} onValueChange={alEscribir} placeholder="Buscar cliente…" />
+      <PopoverContent className="w-[min(360px,calc(100vw-2rem))] p-0" align="start">
+        <Command shouldFilter={!backend} aria-busy={buscando}>
+          <CommandInput
+            placeholder="Buscar cliente…"
+            value={busqueda}
+            onValueChange={setBusqueda}
+          />
           <CommandList>
-            {buscando ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Buscando...
-              </div>
-            ) : (
-              <>
-                <CommandEmpty>Sin resultados para «{texto.trim()}»</CommandEmpty>
-                <CommandGroup>
-                  {resultados.map((cliente) => (
-                    <CommandItem
-                      key={cliente}
-                      value={cliente}
-                      onSelect={() => alSeleccionar(cliente)}
-                    >
-                      <Check
-                        className={cn("size-4", valor === cliente ? "opacity-100" : "opacity-0")}
-                      />
-                      <span className="truncate">{cliente}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            )}
+            <CommandEmpty>
+              {buscando ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Buscando...
+                </span>
+              ) : (
+                "Sin resultados."
+              )}
+            </CommandEmpty>
+            <CommandGroup>
+              {opcionesVisibles.map((cliente) => {
+                const clientePresentado = separarCliente(cliente);
+
+                return (
+                  <CommandItem
+                    key={cliente}
+                    value={cliente}
+                    onSelect={() => alSeleccionar(cliente)}
+                    className="items-start"
+                  >
+                    <Check
+                      className={cn(
+                        "mt-0.5 size-4",
+                        valor === cliente ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium">
+                        {clientePresentado.razonSocial}
+                      </span>
+                      {clientePresentado.ruc ? (
+                        <span className="block truncate text-xs font-normal text-muted-foreground">
+                          Ruc: {clientePresentado.ruc}
+                        </span>
+                      ) : null}
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>

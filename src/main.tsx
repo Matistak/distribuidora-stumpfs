@@ -6,8 +6,21 @@ import { getRouter } from "./router";
 import { API_URL } from "./lib/api";
 import "./styles.css";
 
-const queryClient = new QueryClient();
-const router = getRouter();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Sin reintentos: si la petición falla se muestra el error directo.
+      retry: false,
+      // Sin caché por defecto: los datos se descartan al desmontar el
+      // componente. Si un endpoint debe cachearse, se configura con
+      // `staleTime`/`gcTime` en su queryOptions (src/lib/queries.ts).
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+const router = getRouter(queryClient);
 
 // Necessary for TanStack Router SPA hydration
 // @ts-expect-error router is not typed for window

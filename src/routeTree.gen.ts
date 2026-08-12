@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CargaRouteImport } from './routes/carga'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as VendedoresRouteImport } from './routes/vendedores'
 import { Route as VentasRouteImport } from './routes/ventas'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const ChatRoute = ChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendedoresRoute = VendedoresRouteImport.update({
+  id: '/vendedores',
+  path: '/vendedores',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VentasRoute = VentasRouteImport.update({
   id: '/ventas',
   path: '/ventas',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/carga': typeof CargaRoute
   '/chat': typeof ChatRoute
+  '/vendedores': typeof VendedoresRoute
   '/ventas': typeof VentasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/carga': typeof CargaRoute
   '/chat': typeof ChatRoute
+  '/vendedores': typeof VendedoresRoute
   '/ventas': typeof VentasRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/carga': typeof CargaRoute
   '/chat': typeof ChatRoute
+  '/vendedores': typeof VendedoresRoute
   '/ventas': typeof VentasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/carga' | '/chat' | '/ventas'
+  fullPaths: '/' | '/carga' | '/chat' | '/vendedores' | '/ventas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/carga' | '/chat' | '/ventas'
-  id: '__root__' | '/' | '/carga' | '/chat' | '/ventas'
+  to: '/' | '/carga' | '/chat' | '/vendedores' | '/ventas'
+  id: '__root__' | '/' | '/carga' | '/chat' | '/vendedores' | '/ventas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CargaRoute: typeof CargaRoute
   ChatRoute: typeof ChatRoute
+  VendedoresRoute: typeof VendedoresRoute
   VentasRoute: typeof VentasRoute
 }
 
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendedores': {
+      id: '/vendedores'
+      path: '/vendedores'
+      fullPath: '/vendedores'
+      preLoaderRoute: typeof VendedoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ventas': {
       id: '/ventas'
       path: '/ventas'
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CargaRoute: CargaRoute,
   ChatRoute: ChatRoute,
+  VendedoresRoute: VendedoresRoute,
   VentasRoute: VentasRoute,
 }
 export const routeTree = rootRouteImport

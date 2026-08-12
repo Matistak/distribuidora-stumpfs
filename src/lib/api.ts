@@ -1,4 +1,4 @@
-import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "./types";
+import type { DashboardData, Filtros, OpcionesFiltro, VentaRow, VendedoresData } from "./types";
 
 /**
  * ============================================================
@@ -16,6 +16,7 @@ import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "./types";
  *  GET    /api/filtros                -> listas de clientes / vendedores / canales / ciudades / zonas
  *  GET    /api/clientes               -> búsqueda de clientes por nombre (query: q, limite)
  *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
+ *  GET    /api/vendedores             -> KPIs + resumen agregado por vendedor (query: fechas + vendedor + cliente)
  */
 
 export type AppMode = "mock" | "back";
@@ -155,10 +156,14 @@ export const obtenerDashboard = (filtros: Filtros & { desde?: string; hasta?: st
 /** GET /api/filtros */
 export const obtenerFiltros = () => request<OpcionesFiltro>("/api/filtros");
 
-/** GET /api/clientes — búsqueda de clientes por nombre (para el buscador con debounce) */
-export const buscarClientes = (q: string) =>
-  request<string[]>(`/api/clientes${qs({ q, limite: 50 })}`);
+/** GET /api/clientes — búsqueda de clientes por nombre */
+export const buscarClientes = (q: string, limite = 50) =>
+  request<string[]>(`/api/clientes${qs({ q, limite })}`);
 
 /** GET /api/ventas */
 export const listarVentas = (params: Filtros & { page?: number; pageSize?: number } = {}) =>
   request<{ data: VentaRow[]; total: number }>(`/api/ventas${qs(params)}`);
+
+/** GET /api/vendedores */
+export const obtenerVendedores = (filtros: Filtros & { desde?: string; hasta?: string } = {}) =>
+  request<VendedoresData>(`/api/vendedores${qs(filtros)}`);
