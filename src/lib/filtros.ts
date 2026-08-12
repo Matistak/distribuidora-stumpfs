@@ -11,6 +11,25 @@ export function filtroAnioVigente(): Filtros {
   };
 }
 
+export function parseFiltrosSearch(search: Record<string, unknown>): Filtros {
+  const filtros: Filtros = {};
+  const keys: Array<keyof Filtros> = [
+    "desde",
+    "hasta",
+    "cliente",
+    "vendedor",
+    "canal",
+    "ciudad",
+    "zona",
+  ];
+
+  for (const key of keys) {
+    if (typeof search[key] === "string") filtros[key] = search[key];
+  }
+
+  return filtros;
+}
+
 /**
  * Setter de fecha que impide dejar el rango vacío: si el usuario borra el
  * valor, se conserva el anterior. Evita consultas sin filtro de fechas

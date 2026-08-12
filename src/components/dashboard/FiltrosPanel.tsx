@@ -11,6 +11,7 @@ export function FiltrosPanel({
   opciones,
   backend,
   mostrarCliente = true,
+  mostrarVendedor = true,
   error,
   onChange,
   onApply,
@@ -21,6 +22,7 @@ export function FiltrosPanel({
   opciones: OpcionesFiltro;
   backend: boolean;
   mostrarCliente?: boolean;
+  mostrarVendedor?: boolean;
   error?: string | undefined;
   onChange: (key: keyof Filtros, value: string | undefined) => void;
   onApply: () => void;
@@ -53,7 +55,7 @@ export function FiltrosPanel({
       </div>
 
       <div
-        className={`mt-5 grid gap-3 sm:grid-cols-2 ${mostrarCliente ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+        className={`mt-5 grid gap-3 sm:grid-cols-2 ${mostrarCliente && mostrarVendedor ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
       >
         <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-foreground">
           <span className="text-muted-foreground">Fecha desde</span>
@@ -88,16 +90,18 @@ export function FiltrosPanel({
             />
           </div>
         ) : null}
-        <div className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-foreground">
-          <span className="text-muted-foreground">Vendedor</span>
-          <FiltroSelect
-            placeholder="Todos los vendedores"
-            valor={filtrosEdicion.vendedor}
-            opciones={opciones.vendedores}
-            onChange={(value) => onChange("vendedor", value)}
-            className="h-10 w-full text-sm"
-          />
-        </div>
+        {mostrarVendedor ? (
+          <div className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-foreground">
+            <span className="text-muted-foreground">Vendedor</span>
+            <FiltroSelect
+              placeholder="Todos los vendedores"
+              valor={filtrosEdicion.vendedor}
+              opciones={opciones.vendedores}
+              onChange={(value) => onChange("vendedor", value)}
+              className="h-10 w-full text-sm"
+            />
+          </div>
+        ) : null}
       </div>
 
       {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
