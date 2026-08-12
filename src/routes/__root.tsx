@@ -124,9 +124,6 @@ function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-3 px-2 py-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:size-8">
-            <Truck className="size-5" />
-          </span>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate font-display text-base font-bold text-sidebar-primary">
               Stumpfs SA
@@ -195,7 +192,7 @@ function AppSidebar() {
       <div className="mt-auto border-t border-sidebar-border p-4 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2">
         <div className="flex items-center gap-3">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground">
-            JS
+            PS
           </span>
           <div className="min-w-0 text-xs group-data-[collapsible=icon]:hidden">
             <p className="truncate font-semibold text-sidebar-foreground">Pedro Stumpfs</p>
