@@ -155,6 +155,27 @@
   --sidebar-ring: oklch(0.74 0.11 88);
 }
 
+.table-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.table-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  background-color: var(--border);
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

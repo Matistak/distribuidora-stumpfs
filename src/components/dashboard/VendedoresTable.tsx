@@ -113,7 +113,13 @@ const columnas: DataTableColumn<VendedorResumen>[] = [
   },
 ];
 
-export function VendedoresTable({ data }: { data: VendedorResumen[] }) {
+export function VendedoresTable({
+  data,
+  onSelect,
+}: {
+  data: VendedorResumen[];
+  onSelect?: (vendedor: VendedorResumen) => void;
+}) {
   const [pagina, setPagina] = useState(1);
 
   const paginas = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
@@ -138,6 +144,7 @@ export function VendedoresTable({ data }: { data: VendedorResumen[] }) {
       columns={columnas}
       rows={filas}
       getRowKey={(row) => row.vendedor}
+      onRowClick={onSelect}
       pagination={{
         page: pagina,
         pages: paginas,

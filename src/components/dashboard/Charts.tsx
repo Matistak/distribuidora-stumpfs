@@ -34,35 +34,37 @@ const tooltipStyle = {
 
 export function EvolucionDiaria({ data }: { data: SeriePunto[] }) {
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="gradVentas" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-        <YAxis
-          tickFormatter={fmtCompact}
-          tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-          width={52}
-        />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          formatter={(v: number) => [fmtGs(v), "Venta neta"]}
-          labelFormatter={(l) => `Día ${l}`}
-        />
-        <Area
-          type="monotone"
-          dataKey="valor"
-          stroke="var(--chart-1)"
-          strokeWidth={2.5}
-          fill="url(#gradVentas)"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div className="h-full min-h-60 min-w-0">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gradVentas" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+          <YAxis
+            tickFormatter={fmtCompact}
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            width={52}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(v: number) => [fmtGs(v), "Venta neta"]}
+            labelFormatter={(l) => `Día ${l}`}
+          />
+          <Area
+            type="monotone"
+            dataKey="valor"
+            stroke="var(--chart-1)"
+            strokeWidth={2.5}
+            fill="url(#gradVentas)"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -196,7 +198,7 @@ export function DonaParticipacion({ data }: { data: RankingItem[] }) {
 
 export function TablaRanking({ data, etiqueta }: { data: RankingItem[]; etiqueta: string }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="table-scroll">
       <table className="w-full min-w-[430px] table-fixed text-sm">
         <thead>
           <tr className="border-b border-border text-xs text-muted-foreground">

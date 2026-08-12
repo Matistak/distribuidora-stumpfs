@@ -19,6 +19,7 @@ export function KpiCard({
   icon: Icon,
   tone = "primary",
   className,
+  onClick,
 }: {
   titulo: string;
   valor: string;
@@ -26,11 +27,27 @@ export function KpiCard({
   icon: LucideIcon;
   tone?: Tone;
   className?: string;
+  onClick?: () => void;
 }) {
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "rounded-xl border border-border bg-card p-5 shadow-card transition-shadow hover:shadow-lg",
+        onClick &&
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
     >
@@ -64,7 +81,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-border bg-card shadow-card",
+        "flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card",
         className,
       )}
     >
@@ -72,7 +89,7 @@ export function Panel({
         <h2 className="font-display text-sm font-semibold text-foreground">{titulo}</h2>
         {accion}
       </header>
-      <div className="p-5">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col p-5">{children}</div>
     </section>
   );
 }

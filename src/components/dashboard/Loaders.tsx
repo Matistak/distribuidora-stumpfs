@@ -101,7 +101,7 @@ export function TableSkeleton({
           <Skeleton className="h-8 w-24" />
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="table-scroll">
         <Table>
           <TableHeader>
             <TableRow aria-hidden>

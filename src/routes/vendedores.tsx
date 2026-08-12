@@ -8,11 +8,12 @@ import { RankingBarras } from "@/components/dashboard/Charts";
 import { KpiCard, Panel } from "@/components/dashboard/KpiCard";
 import { KpiSkeleton, PanelSkeleton, TableSkeleton } from "@/components/dashboard/Loaders";
 import { VendedoresTable } from "@/components/dashboard/VendedoresTable";
+import { VendedorDetalle } from "@/components/dashboard/VendedorDetalle";
 import { backendConectado, mensajeError } from "@/lib/api";
 import { filtrosQueryOptions, useQueryErrorToast, vendedoresQueryOptions } from "@/lib/queries";
 import { filtroAnioVigente } from "@/lib/filtros";
 import { fmtGs, opcionesFiltro, resumenVendedoresLocal } from "@/lib/metrics";
-import type { Filtros, OpcionesFiltro } from "@/lib/types";
+import type { Filtros, OpcionesFiltro, VendedorResumen } from "@/lib/types";
 import { useUploadState } from "@/lib/use-upload-state";
 
 export const Route = createFileRoute("/vendedores")({
@@ -32,6 +33,7 @@ function VendedoresPage() {
   const { rows } = useUploadState();
   const [filtros, setFiltros] = useState<Filtros>(filtroAnioVigente);
   const [filtrosEdicion, setFiltrosEdicion] = useState<Filtros>(filtroAnioVigente);
+  const [vendedorSeleccionado, setVendedorSeleccionado] = useState<VendedorResumen | null>(null);
 
   const vendedoresQuery = useQuery({ ...vendedoresQueryOptions(filtros), enabled: backend });
   const filtrosQuery = useQuery({ ...filtrosQueryOptions(), enabled: backend });
@@ -132,6 +134,7 @@ function VendedoresPage() {
                     : "Sin ventas en el período"
                 }
                 icon={Trophy}
+                onClick={mejorVendedor ? () => setVendedorSeleccionado(mejorVendedor) : undefined}
               />
               <KpiCard
                 titulo="Vendedor con menos ventas"
@@ -143,14 +146,23 @@ function VendedoresPage() {
                 }
                 icon={Medal}
                 tone="warning"
+                onClick={peorVendedor ? () => setVendedorSeleccionado(peorVendedor) : undefined}
               />
             </div>
 
-            <VendedoresTable data={data.data} />
+            <VendedoresTable data={data.data} onSelect={setVendedorSeleccionado} />
 
             <Panel titulo="Top 10 vendedores por venta neta">
               <RankingBarras data={top10} height={360} horizontal={false} />
             </Panel>
+
+            <VendedorDetalle
+              vendedor={vendedorSeleccionado}
+              filtros={filtros}
+              backend={backend}
+              rows={rows}
+              onClose={() => setVendedorSeleccionado(null)}
+            />
           </>
         ) : (
           <div className="rounded-xl border border-border bg-card p-12 text-center shadow-card">

@@ -45,6 +45,7 @@ type DataTableProps<T> = {
   minWidth?: string;
   stickyColumnId?: string;
   className?: string;
+  onRowClick?: ((row: T, index: number) => void) | undefined;
 };
 
 export function DataTable<T>({
@@ -62,6 +63,7 @@ export function DataTable<T>({
   minWidth = "min-w-[1160px]",
   stickyColumnId,
   className,
+  onRowClick,
 }: DataTableProps<T>) {
   const stickyColumnIndex = stickyColumnId
     ? columns.findIndex((column) => column.id === stickyColumnId)
@@ -123,7 +125,7 @@ export function DataTable<T>({
         ) : null}
       </div>
 
-      <div className="relative overflow-x-auto [scrollbar-color:var(--color-border)_transparent] [scrollbar-width:thin]">
+      <div className="table-scroll relative">
         <Table className={cn(minWidth, "text-xs")}>
           <colgroup>
             {columns.map((column) => (
@@ -186,7 +188,14 @@ export function DataTable<T>({
               </TableRow>
             ) : (
               rows.map((row, rowIndex) => (
-                <TableRow key={getRowKey(row, rowIndex)} className="group border-border/70">
+                <TableRow
+                  key={getRowKey(row, rowIndex)}
+                  className={cn(
+                    "group border-border/70",
+                    onRowClick && "cursor-pointer transition-colors hover:bg-muted/50",
+                  )}
+                  onClick={onRowClick ? () => onRowClick(row, rowIndex) : undefined}
+                >
                   {columns.map((column, columnIndex) => (
                     <TableCell
                       key={column.id}

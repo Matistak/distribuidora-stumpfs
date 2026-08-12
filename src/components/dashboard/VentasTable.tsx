@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -86,16 +86,23 @@ export function VentasTable({
   backend,
   filtros,
   rows,
+  mostrarVendedor = true,
 }: {
   backend: boolean;
   filtros: Filtros;
   rows: VentaRow[];
+  mostrarVendedor?: boolean;
 }) {
   const [pagina, setPagina] = useState(1);
+
+  const columnasVisibles = mostrarVendedor
+    ? columnas
+    : columnas.filter((columna) => columna.id !== "vendedor");
 
   const ventasQuery = useQuery({
     ...ventasQueryOptions(filtros, pagina, PAGE_SIZE),
     enabled: backend,
+    placeholderData: keepPreviousData,
   });
   const resultado = ventasQuery.data ?? { data: [], total: 0 };
   const cargando = ventasQuery.isFetching;
@@ -139,7 +146,7 @@ export function VentasTable({
           : "No hay ventas para los filtros seleccionados"
       }
       icon={ClipboardList}
-      columns={columnas}
+      columns={columnasVisibles}
       rows={filas}
       getRowKey={(row, index) => `${row.nroDoc}-${row.codProducto}-${row.nroComprobante}-${index}`}
       stickyColumnId="venta-neta"
