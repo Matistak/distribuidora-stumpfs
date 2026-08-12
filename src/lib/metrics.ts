@@ -7,11 +7,14 @@ import type {
   VentaRow,
 } from "./types";
 
-const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+const sum = (arr: Array<number | null>) => arr.reduce<number>((a, b) => a + (b ?? 0), 0);
 
-function ranking(rows: VentaRow[], key: (r: VentaRow) => string, limit = 10): RankingItem[] {
+function ranking(rows: VentaRow[], key: (r: VentaRow) => string | null, limit = 10): RankingItem[] {
   const map = new Map<string, number>();
-  for (const r of rows) map.set(key(r), (map.get(key(r)) ?? 0) + r.montoVtaNetaGua);
+  for (const r of rows) {
+    const nombre = key(r) ?? "SIN DATO";
+    map.set(nombre, (map.get(nombre) ?? 0) + (r.montoVtaNetaGua ?? 0));
+  }
   const total = sum([...map.values()]) || 1;
   return [...map.entries()]
     .map(([nombre, valor]) => ({ nombre, valor, participacion: valor / total }))
@@ -32,7 +35,8 @@ export function aplicarFiltros(rows: VentaRow[], f: Filtros): VentaRow[] {
 }
 
 export function opcionesFiltro(rows: VentaRow[]): OpcionesFiltro {
-  const uniq = (vals: string[]) => [...new Set(vals)].filter(Boolean).sort();
+  const uniq = (vals: Array<string | null>) =>
+    [...new Set(vals)].filter((v): v is string => Boolean(v)).sort();
   return {
     vendedores: uniq(rows.map((r) => r.vendedor)),
     canales: uniq(rows.map((r) => r.canal)),
@@ -47,16 +51,18 @@ export function opcionesFiltro(rows: VentaRow[]): OpcionesFiltro {
  */
 export function calcularDashboard(rows: VentaRow[]): DashboardData {
   const facturas = new Set(rows.map((r) => r.nroDoc));
-  const clientes = new Set(rows.map((r) => r.codCliente));
+  const clientes = new Set(rows.map((r) => r.codCliente).filter((c): c is number => c !== null));
   const productos = new Set(rows.map((r) => r.codProducto));
   const ventaNeta = sum(rows.map((r) => r.montoVtaNetaGua));
   const ventaBruta = sum(rows.map((r) => r.montoIvaBrutaGua));
   const costo = sum(rows.map((r) => r.costoVtaGua));
   const unidades = sum(rows.map((r) => r.vtaUnit));
-  const notas = new Set(rows.filter((r) => /CREDITO/i.test(r.tipoDoc)).map((r) => r.nroDoc));
+  const notas = new Set(
+    rows.filter((r) => /CREDITO/i.test(r.tipoDoc ?? "")).map((r) => r.nroDoc),
+  );
 
   const porDia = new Map<number, number>();
-  for (const r of rows) porDia.set(r.dia, (porDia.get(r.dia) ?? 0) + r.montoVtaNetaGua);
+  for (const r of rows) porDia.set(r.dia, (porDia.get(r.dia) ?? 0) + (r.montoVtaNetaGua ?? 0));
   const ventasPorDia: SeriePunto[] = [...porDia.entries()]
     .sort((a, b) => a[0] - b[0])
     .map(([dia, valor]) => ({ label: String(dia), valor }));
@@ -82,17 +88,21 @@ export function calcularDashboard(rows: VentaRow[]): DashboardData {
     ventasPorVendedor: ranking(rows, (r) => r.vendedor),
     ventasPorCiudad: ranking(rows, (r) => r.ciudad, 7),
     ventasPorCanal: ranking(rows, (r) => r.canal, 8),
-    ventasPorMarca: ranking(rows, (r) => r.marca, 10),
-    topClientes: ranking(rows, (r) => r.razonSocial, 5),
-    topProductos: ranking(rows, (r) => r.producto, 8),
+    ventasPorMarca: ranking(rows, (r) => r.marca ?? "SIN MARCA", 10),
+    topClientes: ranking(rows, (r) => r.razonSocial ?? "SIN CLIENTE", 5),
+    topProductos: ranking(rows, (r) => r.producto ?? "SIN PRODUCTO", 8),
     periodo: { desde: fechas[0] ?? "", hasta: fechas[fechas.length - 1] ?? "" },
   };
 }
 
-export const fmtGs = (n: number) =>
-  `Gs. ${new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 }).format(Math.round(n))}`;
-export const fmtNum = (n: number) =>
-  new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 }).format(Math.round(n));
+export const fmtGs = (n: number | null | undefined) =>
+  n === null || n === undefined
+    ? ""
+    : `Gs. ${new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 }).format(Math.round(n))}`;
+export const fmtNum = (n: number | null | undefined) =>
+  n === null || n === undefined
+    ? ""
+    : new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 }).format(Math.round(n));
 export const fmtPct = (n: number) =>
   `${new Intl.NumberFormat("es-PY", { maximumFractionDigits: 1 }).format(n * 100)}%`;
 export const fmtCompact = (n: number) => {

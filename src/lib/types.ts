@@ -1,49 +1,52 @@
 /**
  * Modelo de datos: una fila = una linea de factura/nota de credito del Excel.
  * Las columnas del Excel siempre son las mismas (49 columnas).
+ * Los campos nullable llegan como null cuando la celda del Excel estaba vacia
+ * (no como 0 ni ""); solo los obligatorios (codProducto, fecha, anho, mes,
+ * dia, nroDoc, nroComprobante) siempre tienen valor.
  */
 export type VentaRow = {
-  codCompania: number;
-  compania: string;
-  codDistribuidora: number;
-  distribuidora: string;
-  codCliente: number;
-  razonSocial: string;
+  codCompania: number | null;
+  compania: string | null;
+  codDistribuidora: number | null;
+  distribuidora: string | null;
+  codCliente: number | null;
+  razonSocial: string | null;
   codProducto: number;
-  producto: string;
-  codMarca: number;
-  marca: string;
+  producto: string | null;
+  codMarca: number | null;
+  marca: string | null;
   fecha: string; // ISO yyyy-mm-dd
-  anhoMes: number;
+  anhoMes: number | null;
   anho: number;
   mes: number;
   dia: number;
-  vtaUnit: number;
-  montoIvaBrutaGua: number;
-  costoVtaGua: number;
-  montoVtaNetaGua: number;
-  codCanal: number;
-  canal: string;
-  codRamo: number;
-  ramo: string;
-  codVendedor: number;
-  vendedor: string;
-  tipoDoc: string;
+  vtaUnit: number | null;
+  montoIvaBrutaGua: number | null;
+  costoVtaGua: number | null;
+  montoVtaNetaGua: number | null;
+  codCanal: number | null;
+  canal: string | null;
+  codRamo: number | null;
+  ramo: string | null;
+  codVendedor: number | null;
+  vendedor: string | null;
+  tipoDoc: string | null;
   nroDoc: string;
   nroComprobante: number;
-  codZona: number;
-  zona: string;
-  codTipoProducto: number;
-  tipoProducto: string;
-  precioConIva: number;
-  precioSinIva: number;
-  porcDescuento: number;
-  precioLista: number;
-  iva: number;
-  ciudad: string;
-  ruc: string;
-  latitud: number;
-  longitud: number;
+  codZona: number | null;
+  zona: string | null;
+  codTipoProducto: number | null;
+  tipoProducto: string | null;
+  precioConIva: number | null;
+  precioSinIva: number | null;
+  porcDescuento: number | null;
+  precioLista: number | null;
+  iva: number | null;
+  ciudad: string | null;
+  ruc: string | null;
+  latitud: number | null;
+  longitud: number | null;
 };
 
 export type Kpis = {
