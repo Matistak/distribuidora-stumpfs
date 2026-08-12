@@ -27,6 +27,7 @@ export function aplicarFiltros(rows: VentaRow[], f: Filtros): VentaRow[] {
     (r) =>
       (!f.desde || r.fecha >= f.desde) &&
       (!f.hasta || r.fecha <= f.hasta) &&
+      (!f.cliente || r.razonSocial === f.cliente) &&
       (!f.vendedor || r.vendedor === f.vendedor) &&
       (!f.canal || r.canal === f.canal) &&
       (!f.ciudad || r.ciudad === f.ciudad) &&
@@ -38,6 +39,7 @@ export function opcionesFiltro(rows: VentaRow[]): OpcionesFiltro {
   const uniq = (vals: Array<string | null>) =>
     [...new Set(vals)].filter((v): v is string => Boolean(v)).sort();
   return {
+    clientes: uniq(rows.map((r) => r.razonSocial)),
     vendedores: uniq(rows.map((r) => r.vendedor)),
     canales: uniq(rows.map((r) => r.canal)),
     ciudades: uniq(rows.map((r) => r.ciudad)),

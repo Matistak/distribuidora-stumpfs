@@ -47,6 +47,7 @@ export function VentasTable({
     backend,
     filtros.desde,
     filtros.hasta,
+    filtros.cliente,
     filtros.vendedor,
     filtros.canal,
     filtros.ciudad,
@@ -137,7 +138,7 @@ export function VentasTable({
               <TableHead>Canal</TableHead>
               <TableHead>Ciudad</TableHead>
               <TableHead className="text-right">Unidades</TableHead>
-              <TableHead className="text-right">Venta neta</TableHead>
+              <TableHead className="text-right">Venta neta gua</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

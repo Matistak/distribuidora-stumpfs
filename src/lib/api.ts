@@ -12,8 +12,9 @@ import type { DashboardData, Filtros, OpcionesFiltro, VentaRow } from "./types";
  *  POST   /api/uploads                -> multipart/form-data { file } : sube y procesa el Excel
  *  GET    /api/uploads                -> historial de cargas
  *  GET    /api/uploads/:id            -> estado de un procesamiento
- *  GET    /api/dashboard              -> KPIs + series + rankings (query: desde, hasta, vendedor, canal, ciudad, zona)
- *  GET    /api/filtros                -> listas de vendedores / canales / ciudades / zonas
+ *  GET    /api/dashboard              -> KPIs + series + rankings (query: desde, hasta, cliente, vendedor, canal, ciudad, zona)
+ *  GET    /api/filtros                -> listas de clientes / vendedores / canales / ciudades / zonas
+ *  GET    /api/clientes               -> búsqueda de clientes por nombre (query: q, limite)
  *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
  */
 
@@ -153,6 +154,10 @@ export const obtenerDashboard = (filtros: Filtros & { desde?: string; hasta?: st
 
 /** GET /api/filtros */
 export const obtenerFiltros = () => request<OpcionesFiltro>("/api/filtros");
+
+/** GET /api/clientes — búsqueda de clientes por nombre (para el buscador con debounce) */
+export const buscarClientes = (q: string) =>
+  request<string[]>(`/api/clientes${qs({ q, limite: 50 })}`);
 
 /** GET /api/ventas */
 export const listarVentas = (params: Filtros & { page?: number; pageSize?: number } = {}) =>

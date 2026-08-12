@@ -79,6 +79,7 @@ export type DashboardData = {
 export type Filtros = {
   desde?: string;
   hasta?: string;
+  cliente?: string;
   vendedor?: string;
   canal?: string;
   ciudad?: string;
@@ -86,6 +87,7 @@ export type Filtros = {
 };
 
 export type OpcionesFiltro = {
+  clientes: string[];
   vendedores: string[];
   canales: string[];
   ciudades: string[];

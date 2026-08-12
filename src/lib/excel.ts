@@ -48,7 +48,7 @@ export async function parseExcel(file: File): Promise<VentaRow[]> {
       codDistribuidora: num(r["cod distribuidora"]),
       distribuidora: str(r["distribuidora"]),
       codCliente: num(r["cod cliente"]),
-      razonSocial: str(r["razon social"]),
+      razonSocial: str(r["razon social"]) ?? "SIN CLIENTE",
       codProducto: num(r["cod producto"]) ?? 0,
       producto: str(r["producto"]),
       codMarca: num(r["cod marca"]),

@@ -39,6 +39,7 @@ export const Route = createFileRoute("/")({
 });
 
 const OPCIONES_VACIAS: OpcionesFiltro = {
+  clientes: [],
   vendedores: [],
   canales: [],
   ciudades: [],
@@ -199,6 +200,12 @@ function Dashboard() {
                 aria-label="Fecha hasta"
               />
             </label>
+            <FiltroSelect
+              placeholder="Todos los clientes"
+              valor={filtros.cliente}
+              opciones={opciones.clientes}
+              onChange={setFiltro("cliente")}
+            />
             <FiltroSelect
               placeholder="Todos los vendedores"
               valor={filtros.vendedor}

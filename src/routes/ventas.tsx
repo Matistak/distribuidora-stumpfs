@@ -1,11 +1,12 @@
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ClipboardList, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FiltroCliente } from "@/components/dashboard/FiltroCliente";
 import { FiltroSelect } from "@/components/dashboard/FiltroSelect";
 import { VentasTable } from "@/components/dashboard/VentasTable";
-import { backendConectado, mensajeError, obtenerFiltros } from "@/lib/api";
+import { backendConectado, buscarClientes, mensajeError, obtenerFiltros } from "@/lib/api";
 import { opcionesFiltro } from "@/lib/metrics";
 import type { Filtros, OpcionesFiltro } from "@/lib/types";
 import { useUploadState } from "@/lib/use-upload-state";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/ventas")({
 });
 
 const OPCIONES_VACIAS: OpcionesFiltro = {
+  clientes: [],
   vendedores: [],
   canales: [],
   ciudades: [],
@@ -29,6 +31,18 @@ function VentasPage() {
   const [errorFiltros, setErrorFiltros] = useState<string>();
   const opcionesLocales = useMemo(() => opcionesFiltro(rows), [rows]);
   const opcionesDisponibles = backend ? opciones : opcionesLocales;
+
+  const buscarCliente = useCallback(
+    (q: string) =>
+      backend
+        ? buscarClientes(q)
+        : Promise.resolve(
+            opcionesLocales.clientes
+              .filter((c) => c.toLowerCase().includes(q.toLowerCase()))
+              .slice(0, 50),
+          ),
+    [backend, opcionesLocales],
+  );
 
   useEffect(() => {
     if (!backend) return;
@@ -110,29 +124,17 @@ function VentasPage() {
                 className="h-9 w-[150px] text-xs"
               />
             </label>
+            <FiltroCliente
+              placeholder="Todos los clientes"
+              valor={filtros.cliente}
+              buscar={buscarCliente}
+              onChange={setFiltro("cliente")}
+            />
             <FiltroSelect
               placeholder="Todos los vendedores"
               valor={filtros.vendedor}
               opciones={opcionesDisponibles.vendedores}
               onChange={setFiltro("vendedor")}
-            />
-            <FiltroSelect
-              placeholder="Todos los canales"
-              valor={filtros.canal}
-              opciones={opcionesDisponibles.canales}
-              onChange={setFiltro("canal")}
-            />
-            <FiltroSelect
-              placeholder="Todas las ciudades"
-              valor={filtros.ciudad}
-              opciones={opcionesDisponibles.ciudades}
-              onChange={setFiltro("ciudad")}
-            />
-            <FiltroSelect
-              placeholder="Todas las zonas"
-              valor={filtros.zona}
-              opciones={opcionesDisponibles.zonas}
-              onChange={setFiltro("zona")}
             />
           </div>
           {errorFiltros ? <p className="mt-3 text-xs text-destructive">{errorFiltros}</p> : null}
