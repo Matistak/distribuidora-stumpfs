@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fmtGs, fmtNum } from "@/lib/metrics";
 import { detalleAlertaQueryOptions } from "@/lib/queries";
-import type { Alerta, ColumnaDetalle, FilaDetalle, Filtros } from "@/lib/types";
+import type { Alerta, ColumnaDetalle, DetalleAlerta, FilaDetalle, Filtros } from "@/lib/types";
 
 /** Filas por página del listado. */
 const TAMANHO_PAGINA = 10;
@@ -51,19 +51,26 @@ const esNumerica = (columna: ColumnaDetalle) =>
 export function AlertaDetalleModal({
   alerta,
   filtros,
+  detalleLocal,
   onOpenChange,
 }: {
   /** Alerta abierta; null cierra el modal. */
   alerta: Alerta | null;
   filtros: Filtros;
+  /** Detalle calculado en el navegador (modo local); si viene, no se consulta al backend. */
+  detalleLocal?: DetalleAlerta | null;
   onOpenChange: (abierto: boolean) => void;
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState<{ clave: string; asc: boolean } | null>(null);
   const [pagina, setPagina] = useState(1);
 
-  const query = useQuery(detalleAlertaQueryOptions(alerta?.clave ?? null, filtros));
-  const detalle = query.data;
+  const local = detalleLocal ?? null;
+  const query = useQuery({
+    ...detalleAlertaQueryOptions(alerta?.clave ?? null, filtros),
+    enabled: local === null && alerta !== null,
+  });
+  const detalle = local ?? query.data;
 
   const filas = useMemo(() => {
     if (!detalle) return [] as FilaDetalle[];
@@ -145,9 +152,9 @@ export function AlertaDetalleModal({
         </div>
 
         <div className="min-h-0 overflow-auto rounded-lg border bg-card">
-          {query.isPending ? (
+          {local === null && query.isPending ? (
             <p className="p-6 text-sm text-muted-foreground">Cargando detalle…</p>
-          ) : query.isError ? (
+          ) : local === null && query.isError ? (
             <div className="p-6">
               <p className="text-sm font-semibold">No se pudo cargar el detalle</p>
               <button

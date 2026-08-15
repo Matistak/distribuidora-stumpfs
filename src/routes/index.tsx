@@ -15,6 +15,8 @@ import { ResumenEjecutivo } from "@/components/dashboard/ResumenEjecutivo";
 import { AlertasImportantes } from "@/components/dashboard/AlertasImportantes";
 import { DashboardSkeleton } from "@/components/dashboard/Loaders";
 import { aplicarFiltros, calcularDashboard, fmtGs, fmtNum, opcionesFiltro } from "@/lib/metrics";
+import { resumenLocal } from "@/lib/resumen-local";
+import { alertasLocal, detalleAlertaLocal, esClaveAlerta } from "@/lib/alertas-local";
 import { backendConectado } from "@/lib/api";
 import {
   alertasQueryOptions,
@@ -73,6 +75,23 @@ function Dashboard() {
     () => calcularDashboard(filtradas, filtradasSinFechas),
     [filtradas, filtradasSinFechas],
   );
+  // Resumen ejecutivo y alertas ignoran el filtro de fechas (igual que el backend).
+  const resumenLocalData = useMemo(
+    () => (backend ? null : resumenLocal(rows, filtros)),
+    [backend, rows, filtros],
+  );
+  const alertasLocalData = useMemo(
+    () => (backend ? null : alertasLocal(rows, filtros)),
+    [backend, rows, filtros],
+  );
+  const detalleLocal = useMemo(
+    () => (clave: string) =>
+      esClaveAlerta(clave)
+        ? detalleAlertaLocal(rows, clave, filtros)
+        : { clave, titulo: "", detalle: "", columnas: [], filas: [], total: 0 },
+    [rows, filtros],
+  );
+
   const opciones = backend ? (filtrosQuery.data ?? OPCIONES_VACIAS) : opcionesLocales;
   const d = backend ? (dashboardQuery.data ?? dashboardLocal) : dashboardLocal;
   const hayDatos = backend ? Boolean(dashboardQuery.data?.periodo.desde) : rows.length > 0;
@@ -150,23 +169,27 @@ function Dashboard() {
 
       <main className="@container mx-auto max-w-[1600px] space-y-6 px-6 py-7 lg:px-10">
         <section className="@container min-w-0 space-y-6">
-          {backend ? (
-            <ResumenEjecutivo
-              kpis={resumenQuery.data?.kpis ?? []}
-              cargando={resumenQuery.isPending}
-              error={resumenQuery.isError}
-              onRetry={() => void resumenQuery.refetch()}
-            />
-          ) : null}
+          {/* En modo local no tiene sentido mostrarlos antes de cargar un Excel. */}
+          {backend || hayDatos ? (
+            <>
+              <ResumenEjecutivo
+                kpis={backend ? (resumenQuery.data?.kpis ?? []) : (resumenLocalData?.kpis ?? [])}
+                cargando={backend && resumenQuery.isPending}
+                error={backend && resumenQuery.isError}
+                onRetry={() => void resumenQuery.refetch()}
+              />
 
-          {backend ? (
-            <AlertasImportantes
-              alertas={alertasQuery.data?.alertas ?? []}
-              filtros={filtros}
-              cargando={alertasQuery.isPending}
-              error={alertasQuery.isError}
-              onRetry={() => void alertasQuery.refetch()}
-            />
+              <AlertasImportantes
+                alertas={
+                  backend ? (alertasQuery.data?.alertas ?? []) : (alertasLocalData?.alertas ?? [])
+                }
+                filtros={filtros}
+                {...(backend ? {} : { detalleLocal })}
+                cargando={backend && alertasQuery.isPending}
+                error={backend && alertasQuery.isError}
+                onRetry={() => void alertasQuery.refetch()}
+              />
+            </>
           ) : null}
 
           {cargandoBackend ? (

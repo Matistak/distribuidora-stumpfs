@@ -11,7 +11,7 @@ import {
 import { AlertaDetalleModal } from "./AlertaDetalleModal";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/metrics";
-import type { Alerta, AlertaTono, Filtros } from "@/lib/types";
+import type { Alerta, AlertaTono, DetalleAlerta, Filtros } from "@/lib/types";
 
 const ICONO: Record<string, LucideIcon> = {
   vendedoresEnCaida: TrendingDown,
@@ -109,6 +109,7 @@ function TarjetaCargando({ clave }: { clave: string }) {
 export function AlertasImportantes({
   alertas,
   filtros,
+  detalleLocal,
   cargando,
   error,
   onRetry,
@@ -116,6 +117,8 @@ export function AlertasImportantes({
   alertas: Alerta[];
   /** Mismos filtros del tablero: el detalle debe cuadrar con el contador. */
   filtros: Filtros;
+  /** Detalle calculado en el navegador (modo local); sin esto se consulta al backend. */
+  detalleLocal?: (clave: string) => DetalleAlerta;
   cargando?: boolean;
   error?: boolean;
   onRetry?: () => void;
@@ -154,6 +157,7 @@ export function AlertasImportantes({
       <AlertaDetalleModal
         alerta={abierta}
         filtros={filtros}
+        detalleLocal={detalleLocal && abierta ? detalleLocal(abierta.clave) : null}
         onOpenChange={(a) => {
           if (!a) setAbierta(null);
         }}
