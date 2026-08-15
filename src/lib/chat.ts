@@ -77,9 +77,10 @@ export type ChatMensaje = {
 const NOMBRES_HERRAMIENTAS: Record<string, string> = {
   resumen_ventas: "Resumen de ventas",
   ventas_por_periodo: "Ventas por período",
-  ventas_por_vendedor: "Ventas por vendedor",
-  ventas_por_producto: "Ventas por producto",
-  ventas_por_ciudad: "Ventas por ciudad",
+  ranking_ventas: "Ranking de ventas",
+  valores_filtro: "Valores de filtro",
+  alertas_ventas: "Alertas",
+  detalle_alerta: "Detalle de alerta",
   comparar_periodos: "Comparar períodos",
 };
 

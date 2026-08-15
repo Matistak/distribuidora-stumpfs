@@ -905,10 +905,10 @@ Backend (`distribuidora-backend`):
   (JSON-RPC 2.0): `initialize` con `instructions`, `notifications/initialized`,
   `ping`, `tools/list` y `tools/call`. Misma decision que el cliente JSON-RPC
   de la Etapa 2: se implementa a mano, sin `@modelcontextprotocol/sdk`.
-- `src/mcp/ventasMcpServer.ts` (nuevo) - entrypoint del proceso: define las 6
+- `src/mcp/ventasMcpServer.ts` (nuevo) - entrypoint del proceso: define las 8
   herramientas (schema zod + JSON Schema + handler), las instrucciones para el
-  modelo (fechas, montos en quetzales, "no inventes cifras") y cierra el
-  proceso con SIGINT/SIGTERM.
+  modelo (fechas, montos en guaranies con formato es-PY, filtros exactos vs.
+  parciales, "no inventes cifras") y cierra el proceso con SIGINT/SIGTERM.
 - `src/mcp/ventasMcpConfig.ts` (nuevo) - resuelve el comando del MCP:
   1. `VENTAS_MCP_CMD` + `VENTAS_MCP_ARGS` (JSON) si el usuario los define.
   2. `dist/mcp/ventasMcpServer.js` con el node actual si el backend esta
