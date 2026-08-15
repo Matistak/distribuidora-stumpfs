@@ -5,6 +5,7 @@ import type {
   DashboardData,
   Filtros,
   OpcionesFiltro,
+  ProductoResumen,
   RankingItem,
   SerieAnual,
   SeriePunto,
@@ -18,6 +19,16 @@ const sum = (arr: Array<number | null>) => arr.reduce<number>((a, b) => a + (b ?
 export function etiquetaCliente(ruc: string | null, razonSocial: string | null): string | null {
   if (!razonSocial) return null;
   return ruc ? `${ruc} - ${razonSocial}` : razonSocial;
+}
+
+/**
+ * Separa la etiqueta "RUC - Razon Social" en sus partes para mostrarla en dos
+ * lineas (nombre arriba, RUC debajo). Si la etiqueta no trae RUC, `ruc` es null.
+ */
+export function partesCliente(etiqueta: string): { nombre: string; ruc: string | null } {
+  const sep = etiqueta.indexOf(" - ");
+  if (sep === -1) return { nombre: etiqueta, ruc: null };
+  return { nombre: etiqueta.slice(sep + 3), ruc: etiqueta.slice(0, sep) };
 }
 
 function ranking(rows: VentaRow[], key: (r: VentaRow) => string | null, limit = 10): RankingItem[] {
@@ -167,6 +178,78 @@ export function resumenClientesLocal(rows: VentaRow[], f: Filtros): ClientesData
     data: resumen.data,
     dataKpis: resumenKpis.data,
   };
+}
+
+/**
+ * Resumen agregado por producto (modo local). Se usa en el detalle de cliente:
+ * las filas ya vienen acotadas por los filtros (incluido el cliente).
+ */
+export function resumenProductosLocal(rows: VentaRow[], f: Filtros = {}): ProductoResumen[] {
+  const filas = aplicarFiltros(rows, f);
+  const porProducto = new Map<
+    number,
+    {
+      producto: string;
+      marca: string;
+      tipoProducto: string;
+      facturas: Set<string>;
+      unidades: number;
+      ventaBruta: number;
+      ventaNeta: number;
+      costo: number;
+      ultimaCompra: string;
+    }
+  >();
+
+  for (const r of filas) {
+    let agg = porProducto.get(r.codProducto);
+    if (!agg) {
+      agg = {
+        producto: r.producto ?? "SIN DATO",
+        marca: r.marca ?? "SIN DATO",
+        tipoProducto: r.tipoProducto ?? "SIN DATO",
+        facturas: new Set(),
+        unidades: 0,
+        ventaBruta: 0,
+        ventaNeta: 0,
+        costo: 0,
+        ultimaCompra: "",
+      };
+      porProducto.set(r.codProducto, agg);
+    }
+    agg.facturas.add(r.nroDoc);
+    agg.unidades += r.vtaUnit ?? 0;
+    agg.ventaBruta += r.montoIvaBrutaGua ?? 0;
+    agg.ventaNeta += r.montoVtaNetaGua ?? 0;
+    agg.costo += r.costoVtaGua ?? 0;
+    // La descripcion mostrada es la de la compra mas reciente.
+    if (r.fecha > agg.ultimaCompra) {
+      agg.ultimaCompra = r.fecha;
+      agg.producto = r.producto ?? "SIN DATO";
+      agg.marca = r.marca ?? "SIN DATO";
+      agg.tipoProducto = r.tipoProducto ?? "SIN DATO";
+    }
+  }
+
+  const total = sum([...porProducto.values()].map((a) => a.ventaNeta));
+
+  return [...porProducto.entries()]
+    .map(([codProducto, a]) => ({
+      codProducto,
+      producto: a.producto,
+      marca: a.marca,
+      tipoProducto: a.tipoProducto,
+      facturas: a.facturas.size,
+      unidades: a.unidades,
+      ventaBruta: a.ventaBruta,
+      ventaNeta: a.ventaNeta,
+      costo: a.costo,
+      margenPorc: a.ventaNeta ? (a.ventaNeta - a.costo) / a.ventaNeta : 0,
+      precioPromedio: a.unidades ? a.ventaNeta / a.unidades : 0,
+      participacion: total ? a.ventaNeta / total : 0,
+      ultimaCompra: a.ultimaCompra,
+    }))
+    .sort((a, b) => b.ventaNeta - a.ventaNeta);
 }
 
 /**

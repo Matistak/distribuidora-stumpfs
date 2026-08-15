@@ -2,17 +2,16 @@ import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { fmtGs, fmtNum, fmtPct } from "@/lib/metrics";
+import { fmtGs, fmtNum, fmtPct, partesCliente } from "@/lib/metrics";
 import type { ClienteResumen } from "@/lib/types";
 
 const PAGE_SIZE = 10;
 
 function iniciales(nombre: string) {
   // La etiqueta puede venir como "RUC - Razón Social": las iniciales salen del nombre.
-  const razon = nombre.includes(" - ") ? nombre.slice(nombre.indexOf(" - ") + 3) : nombre;
   return (
-    razon
-      .split(" ")
+    partesCliente(nombre)
+      .nombre.split(" ")
       .filter(Boolean)
       .slice(0, 2)
       .map((parte) => parte[0])
@@ -25,16 +24,24 @@ const columnas: DataTableColumn<ClienteResumen>[] = [
     id: "cliente",
     header: "Cliente",
     width: "w-[260px]",
-    cell: (row) => (
-      <div className="flex items-center gap-2.5">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-bold uppercase text-primary">
-          {iniciales(row.cliente)}
-        </span>
-        <span className="truncate" title={row.cliente}>
-          {row.cliente}
-        </span>
-      </div>
-    ),
+    cell: (row) => {
+      const { nombre, ruc } = partesCliente(row.cliente);
+      return (
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-bold uppercase text-primary">
+            {iniciales(row.cliente)}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate font-medium text-foreground" title={nombre}>
+              {nombre}
+            </div>
+            {ruc ? (
+              <div className="truncate text-[11px] text-muted-foreground">Ruc: {ruc}</div>
+            ) : null}
+          </div>
+        </div>
+      );
+    },
   },
   {
     id: "vendedor",
@@ -133,7 +140,13 @@ const columnas: DataTableColumn<ClienteResumen>[] = [
   },
 ];
 
-export function ClientesTable({ data }: { data: ClienteResumen[] }) {
+export function ClientesTable({
+  data,
+  onSelect,
+}: {
+  data: ClienteResumen[];
+  onSelect?: (cliente: ClienteResumen) => void;
+}) {
   const [pagina, setPagina] = useState(1);
 
   const paginas = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
@@ -158,6 +171,7 @@ export function ClientesTable({ data }: { data: ClienteResumen[] }) {
       columns={columnas}
       rows={filas}
       getRowKey={(row) => row.cliente}
+      onRowClick={onSelect}
       pagination={{
         page: pagina,
         pages: paginas,

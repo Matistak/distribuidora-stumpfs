@@ -201,6 +201,23 @@ export type ClienteResumen = {
   ultimaCompra: string;
 };
 
+/** Una linea del listado de productos comprados por un cliente. */
+export type ProductoResumen = {
+  codProducto: number;
+  producto: string;
+  marca: string;
+  tipoProducto: string;
+  facturas: number;
+  unidades: number;
+  ventaBruta: number;
+  ventaNeta: number;
+  costo: number;
+  margenPorc: number;
+  precioPromedio: number;
+  participacion: number;
+  ultimaCompra: string;
+};
+
 export type ClientesKpis = {
   clientesActivos: number;
   ventaNeta: number;
