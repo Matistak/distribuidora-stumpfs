@@ -30,8 +30,6 @@ const ESTILO: Record<string, Estilo> = {
   cumplimientoObjetivo: { icon: Target, tone: "primary", titulo: "Cumpl. objetivo" },
 };
 
-const OCULTOS = new Set(["ticketPromedio"]);
-
 const DEFECTO: Estilo = { icon: TrendingUp, tone: "primary", titulo: "" };
 
 const nfPct = new Intl.NumberFormat("es-PY", {
@@ -65,9 +63,7 @@ export function ResumenEjecutivo({
 
   const items = estadoCarga
     ? PLACEHOLDER.map((clave) => ({ clave, kpi: null as ResumenKpi | null }))
-    : kpis
-        .filter((kpi) => !OCULTOS.has(kpi.clave))
-        .map((kpi) => ({ clave: kpi.clave, kpi }));
+    : kpis.map((kpi) => ({ clave: kpi.clave, kpi }));
 
   return (
     <div className="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-5">

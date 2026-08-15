@@ -91,7 +91,6 @@ export function ClienteDetalle({
           <Dato label="Facturas" valor={fmtNum(cliente.facturas)} />
           <Dato label="Productos" valor={fmtNum(cliente.productos)} />
           <Dato label="Unidades" valor={fmtNum(cliente.unidades)} />
-          <Dato label="Ticket promedio" valor={fmtGs(cliente.ticketPromedio)} />
           <Dato label="Venta bruta" valor={fmtGs(cliente.ventaBruta)} />
           <Dato label="Venta neta" valor={fmtGs(cliente.ventaNeta)} destacado />
           <Dato label="Margen" valor={fmtPct(cliente.margenPorc)} />

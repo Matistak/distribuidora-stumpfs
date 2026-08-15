@@ -5,6 +5,7 @@ import {
   Building2,
   ClipboardList,
   FileSpreadsheet,
+  FileText,
   Truck,
   UserRound,
   type LucideIcon,
@@ -156,6 +157,12 @@ function AppSidebar() {
                 active={pathname.startsWith("/ventas")}
               />
               <SidebarNavItem
+                to="/facturas"
+                label="Facturas"
+                icon={FileText}
+                active={pathname.startsWith("/facturas")}
+              />
+              <SidebarNavItem
                 to="/clientes"
                 label="Clientes"
                 icon={Building2}
@@ -217,7 +224,7 @@ function SidebarNavItem({
   icon: Icon,
   active,
 }: {
-  to: "/" | "/carga" | "/ventas" | "/clientes" | "/vendedores" | "/chat";
+  to: "/" | "/carga" | "/ventas" | "/facturas" | "/clientes" | "/vendedores" | "/chat";
   label: string;
   icon: LucideIcon;
   active: boolean;

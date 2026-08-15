@@ -107,7 +107,6 @@ function deltaPuntos(
 }
 
 const margen = (a: Agregado) => (a.ventaNeta ? (a.ventaNeta - a.costo) / a.ventaNeta : 0);
-const ticket = (a: Agregado) => (a.facturas ? a.ventaNeta / a.facturas : 0);
 
 const BASE = {
   ventasDia: { titulo: "Ventas del día", formato: "moneda" },
@@ -116,7 +115,6 @@ const BASE = {
   clientesActivos: { titulo: "Clientes activos", formato: "numero" },
   clientesNuevos: { titulo: "Clientes nuevos", formato: "numero" },
   facturas: { titulo: "Facturas", formato: "numero" },
-  ticketPromedio: { titulo: "Ticket promedio", formato: "moneda" },
   unidades: { titulo: "Unidades", formato: "numero" },
   cumplimientoObjetivo: { titulo: "Cumpl. objetivo", formato: "porcentaje" },
 } as const satisfies Record<string, { titulo: string; formato: ResumenKpi["formato"] }>;
@@ -255,14 +253,6 @@ export function resumenLocal(rows: VentaRow[], filtros: Filtros): ResumenData {
       clave: "facturas",
       valor: actualMes.facturas,
       ...delMes(actualMes.facturas, previoMes.facturas),
-    },
-    {
-      ...BASE.ticketPromedio,
-      clave: "ticketPromedio",
-      valor: actualMes.facturas ? ticket(actualMes) : null,
-      estado: actualMes.facturas ? estadoMes : "sin-datos",
-      periodo: periodoMes,
-      comparativo: delta(ticket(actualMes), ticket(previoMes), hayMes, etiquetaTramo),
     },
     {
       ...BASE.unidades,

@@ -84,14 +84,6 @@ const columnas: DataTableColumn<VendedorResumen>[] = [
     ),
   },
   {
-    id: "ticket-promedio",
-    header: "Ticket prom.",
-    width: "w-[150px]",
-    headerClassName: "text-right",
-    className: "whitespace-nowrap text-right tabular-nums text-muted-foreground",
-    cell: (row) => fmtGs(row.ticketPromedio),
-  },
-  {
     id: "participacion",
     header: "Part. venta",
     width: "w-[110px]",

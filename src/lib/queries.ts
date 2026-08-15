@@ -3,11 +3,13 @@ import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   listarVentas,
+  listarComprobantes,
   buscarClientes,
   obtenerAlertas,
   obtenerDetalleAlerta,
   mensajeError,
   obtenerClientesResumen,
+  obtenerComprobante,
   obtenerDashboard,
   obtenerFiltros,
   obtenerResumen,
@@ -111,6 +113,21 @@ export const ventasQueryOptions = (filtros: Filtros, page: number, pageSize: num
     queryFn: () => listarVentas({ ...filtros, page, pageSize }),
   });
 
+/** Comprobantes agrupados y paginados. */
+export const comprobantesQueryOptions = (filtros: Filtros, page: number, pageSize: number) =>
+  queryOptions({
+    queryKey: ["comprobantes", filtros, page, pageSize] as const,
+    queryFn: () => listarComprobantes({ ...filtros, page, pageSize }),
+  });
+
+/** Detalle de líneas de un comprobante; solo se consulta al abrirlo. */
+export const comprobanteDetalleQueryOptions = (nroDoc: string | null) =>
+  queryOptions({
+    queryKey: ["comprobante-detalle", nroDoc] as const,
+    queryFn: () => obtenerComprobante(nroDoc as string),
+    enabled: nroDoc !== null,
+  });
+
 /** Resumen agregado por cliente. */
 export const clientesResumenQueryOptions = (filtros: Filtros) =>
   queryOptions({
@@ -167,6 +184,7 @@ export async function invalidarDatosComerciales(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ["alertas"] }),
     queryClient.invalidateQueries({ queryKey: ["filtros"] }),
     queryClient.invalidateQueries({ queryKey: ["ventas"] }),
+    queryClient.invalidateQueries({ queryKey: ["comprobantes"] }),
     queryClient.invalidateQueries({ queryKey: ["vendedores"] }),
     queryClient.invalidateQueries({ queryKey: ["clientes-resumen"] }),
   ]);

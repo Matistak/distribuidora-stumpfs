@@ -12,6 +12,7 @@ export function FiltrosPanel({
   backend,
   mostrarCliente = true,
   mostrarVendedor = true,
+  mostrarTipoDoc = false,
   error,
   onChange,
   onApply,
@@ -23,6 +24,8 @@ export function FiltrosPanel({
   backend: boolean;
   mostrarCliente?: boolean;
   mostrarVendedor?: boolean;
+  /** Selector de tipo de comprobante; solo lo usa el listado de facturas. */
+  mostrarTipoDoc?: boolean;
   error?: string | undefined;
   onChange: (key: keyof Filtros, value: string | undefined) => void;
   onApply: () => void;
@@ -32,7 +35,12 @@ export function FiltrosPanel({
     filtros.desde !== filtrosEdicion.desde ||
     filtros.hasta !== filtrosEdicion.hasta ||
     filtros.cliente !== filtrosEdicion.cliente ||
-    filtros.vendedor !== filtrosEdicion.vendedor;
+    filtros.vendedor !== filtrosEdicion.vendedor ||
+    filtros.tipoDoc !== filtrosEdicion.tipoDoc;
+
+  const campos =
+    2 + (mostrarCliente ? 1 : 0) + (mostrarVendedor ? 1 : 0) + (mostrarTipoDoc ? 1 : 0);
+  const columnas = campos >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3";
 
   return (
     <section className="rounded-xl border border-border/80 bg-card p-4 shadow-card sm:p-5">
@@ -54,9 +62,7 @@ export function FiltrosPanel({
         </Button>
       </div>
 
-      <div
-        className={`mt-5 grid gap-3 sm:grid-cols-2 ${mostrarCliente && mostrarVendedor ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
-      >
+      <div className={`mt-5 grid gap-3 sm:grid-cols-2 ${columnas}`}>
         <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-foreground">
           <span className="text-muted-foreground">Fecha desde</span>
           <Input
@@ -98,6 +104,18 @@ export function FiltrosPanel({
               valor={filtrosEdicion.vendedor}
               opciones={opciones.vendedores}
               onChange={(value) => onChange("vendedor", value)}
+              className="h-10 w-full text-sm"
+            />
+          </div>
+        ) : null}
+        {mostrarTipoDoc ? (
+          <div className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-foreground">
+            <span className="text-muted-foreground">Tipo de comprobante</span>
+            <FiltroSelect
+              placeholder="Todos los tipos"
+              valor={filtrosEdicion.tipoDoc}
+              opciones={opciones.tiposDoc}
+              onChange={(value) => onChange("tipoDoc", value)}
               className="h-10 w-full text-sm"
             />
           </div>

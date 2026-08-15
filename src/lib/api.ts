@@ -1,6 +1,8 @@
 import type {
   AlertasData,
   ClientesData,
+  ComprobanteDetalle,
+  ComprobanteResumen,
   DetalleAlerta,
   DashboardData,
   Filtros,
@@ -29,6 +31,8 @@ import type {
  *  GET    /api/clientes               -> búsqueda de clientes por nombre (query: q, limite)
  *  GET    /api/clientes/resumen       -> KPIs + resumen agregado por cliente (query: fechas + filtros)
  *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
+ *  GET    /api/comprobantes           -> comprobantes agrupados (query: page, pageSize, fechas + filtros)
+ *  GET    /api/comprobantes/:nroDoc   -> líneas de un comprobante
  *  GET    /api/vendedores             -> KPIs + resumen agregado por vendedor (query: fechas + vendedor + cliente)
  */
 
@@ -197,12 +201,21 @@ export const buscarClientes = (q: string, limite = 50) =>
   request<string[]>(`/api/clientes${qs({ q, limite })}`);
 
 /** GET /api/clientes/resumen */
-export const obtenerClientesResumen = (filtros: Filtros & { desde?: string; hasta?: string } = {}) =>
-  request<ClientesData>(`/api/clientes/resumen${qs(filtros)}`);
+export const obtenerClientesResumen = (
+  filtros: Filtros & { desde?: string; hasta?: string } = {},
+) => request<ClientesData>(`/api/clientes/resumen${qs(filtros)}`);
 
 /** GET /api/ventas */
 export const listarVentas = (params: Filtros & { page?: number; pageSize?: number } = {}) =>
   request<{ data: VentaRow[]; total: number }>(`/api/ventas${qs(params)}`);
+
+/** GET /api/comprobantes */
+export const listarComprobantes = (params: Filtros & { page?: number; pageSize?: number } = {}) =>
+  request<{ data: ComprobanteResumen[]; total: number }>(`/api/comprobantes${qs(params)}`);
+
+/** GET /api/comprobantes/:nroDoc */
+export const obtenerComprobante = (nroDoc: string) =>
+  request<ComprobanteDetalle>(`/api/comprobantes/${encodeURIComponent(nroDoc)}`);
 
 /** GET /api/vendedores */
 export const obtenerVendedores = (filtros: Filtros & { desde?: string; hasta?: string } = {}) =>

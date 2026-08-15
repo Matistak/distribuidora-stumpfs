@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CargaRouteImport } from './routes/carga'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ClientesRouteImport } from './routes/clientes'
+import { Route as FacturasRouteImport } from './routes/facturas'
 import { Route as VendedoresRouteImport } from './routes/vendedores'
 import { Route as VentasRouteImport } from './routes/ventas'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
@@ -38,6 +39,11 @@ const ChatRoute = ChatRouteImport.update({
 const ClientesRoute = ClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FacturasRoute = FacturasRouteImport.update({
+  id: '/facturas',
+  path: '/facturas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VendedoresRoute = VendedoresRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/carga': typeof CargaRoute
   '/chat': typeof ChatRoute
   '/clientes': typeof ClientesRouteWithChildren
+  '/facturas': typeof FacturasRoute
   '/vendedores': typeof VendedoresRouteWithChildren
   '/ventas': typeof VentasRoute
   '/clientes/$cliente': typeof ClientesClienteRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/carga': typeof CargaRoute
   '/chat': typeof ChatRoute
+  '/facturas': typeof FacturasRoute
   '/ventas': typeof VentasRoute
   '/clientes/$cliente': typeof ClientesClienteRoute
   '/vendedores/$vendedor': typeof VendedoresVendedorRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/carga': typeof CargaRoute
   '/chat': typeof ChatRoute
   '/clientes': typeof ClientesRouteWithChildren
+  '/facturas': typeof FacturasRoute
   '/vendedores': typeof VendedoresRouteWithChildren
   '/ventas': typeof VentasRoute
   '/clientes/$cliente': typeof ClientesClienteRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/carga'
     | '/chat'
     | '/clientes'
+    | '/facturas'
     | '/vendedores'
     | '/ventas'
     | '/clientes/$cliente'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/carga'
     | '/chat'
+    | '/facturas'
     | '/ventas'
     | '/clientes/$cliente'
     | '/vendedores/$vendedor'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '/carga'
     | '/chat'
     | '/clientes'
+    | '/facturas'
     | '/vendedores'
     | '/ventas'
     | '/clientes/$cliente'
@@ -148,6 +160,7 @@ export interface RootRouteChildren {
   CargaRoute: typeof CargaRoute
   ChatRoute: typeof ChatRoute
   ClientesRoute: typeof ClientesRouteWithChildren
+  FacturasRoute: typeof FacturasRoute
   VendedoresRoute: typeof VendedoresRouteWithChildren
   VentasRoute: typeof VentasRoute
 }
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/clientes'
       preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/facturas': {
+      id: '/facturas'
+      path: '/facturas'
+      fullPath: '/facturas'
+      preLoaderRoute: typeof FacturasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vendedores': {
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   CargaRoute: CargaRoute,
   ChatRoute: ChatRoute,
   ClientesRoute: ClientesRouteWithChildren,
+  FacturasRoute: FacturasRoute,
   VendedoresRoute: VendedoresRouteWithChildren,
   VentasRoute: VentasRoute,
 }

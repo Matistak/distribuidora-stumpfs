@@ -21,6 +21,7 @@ const OPCIONES_VACIAS: OpcionesFiltro = {
   canales: [],
   ciudades: [],
   zonas: [],
+  tiposDoc: [],
 };
 
 function VendedorDetallePage() {

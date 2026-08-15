@@ -53,7 +53,8 @@ export function aplicarFiltros(rows: VentaRow[], f: Filtros): VentaRow[] {
       (!f.vendedor || r.vendedor === f.vendedor) &&
       (!f.canal || r.canal === f.canal) &&
       (!f.ciudad || r.ciudad === f.ciudad) &&
-      (!f.zona || r.zona === f.zona),
+      (!f.zona || r.zona === f.zona) &&
+      (!f.tipoDoc || r.tipoDoc === f.tipoDoc),
   );
 }
 
@@ -66,6 +67,7 @@ export function opcionesFiltro(rows: VentaRow[]): OpcionesFiltro {
     canales: uniq(rows.map((r) => r.canal)),
     ciudades: uniq(rows.map((r) => r.ciudad)),
     zonas: uniq(rows.map((r) => r.zona)),
+    tiposDoc: uniq(rows.map((r) => r.tipoDoc)),
   };
 }
 
@@ -142,7 +144,6 @@ export function resumenClientesLocal(rows: VentaRow[], f: Filtros): ClientesData
           ventaNeta: neta,
           costo: a.costo,
           margenPorc: neta ? (neta - a.costo) / neta : 0,
-          ticketPromedio: a.facturas.size ? neta / a.facturas.size : 0,
           participacion: ventaNeta ? neta / ventaNeta : 0,
           ultimaCompra: a.ultimaCompra,
         };
@@ -171,7 +172,6 @@ export function resumenClientesLocal(rows: VentaRow[], f: Filtros): ClientesData
       ventaNeta,
       facturas,
       unidades: sum(sinCliente.map((r) => r.vtaUnit)),
-      ticketPromedio: facturas ? ventaNeta / facturas : 0,
       margenPorc: ventaNeta ? (ventaNeta - costoTotal) / ventaNeta : 0,
       concentracionTop10: ventaNeta ? concentracionTop10 / ventaNeta : 0,
     },
@@ -310,7 +310,6 @@ export function resumenVendedoresLocal(rows: VentaRow[], f: Filtros): Vendedores
           ventaNeta: neta,
           costo: a.costo,
           margenPorc: neta ? (neta - a.costo) / neta : 0,
-          ticketPromedio: a.facturas.size ? neta / a.facturas.size : 0,
           participacion: ventaNeta ? neta / ventaNeta : 0,
           ultimaVenta: a.ultimaVenta,
         };
@@ -341,7 +340,6 @@ export function resumenVendedoresLocal(rows: VentaRow[], f: Filtros): Vendedores
       ventaNeta,
       facturas,
       unidades: sum(soloFechas.map((r) => r.vtaUnit)),
-      ticketPromedio: facturas ? ventaNeta / facturas : 0,
       margenPorc: ventaNeta ? (ventaNeta - costoTotal) / ventaNeta : 0,
       concentracionTop10: ventaNeta ? concentracionTop10 / ventaNeta : 0,
     },
@@ -470,7 +468,6 @@ export function calcularDashboard(
     kpis: {
       ventaBruta,
       ventaNeta,
-      ticketPromedio: facturas.size ? ventaNeta / facturas.size : 0,
       cantidadFacturas: facturas.size,
       unidadesVendidas: unidades,
       clientesActivos: clientes.size,

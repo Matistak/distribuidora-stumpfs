@@ -84,7 +84,6 @@ export function VendedorDetalle({
           <Dato label="Última venta" valor={vendedor.ultimaVenta || "—"} />
           <Dato label="Venta bruta" valor={fmtGs(vendedor.ventaBruta)} />
           <Dato label="Venta neta" valor={fmtGs(vendedor.ventaNeta)} destacado />
-          <Dato label="Ticket promedio" valor={fmtGs(vendedor.ticketPromedio)} />
           <Dato label="Margen" valor={fmtPct(vendedor.margenPorc)} />
           <Dato label="Participación" valor={fmtPct(vendedor.participacion)} />
         </div>
