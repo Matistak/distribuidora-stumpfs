@@ -2,6 +2,7 @@ import { Link, Outlet, createRootRoute, useRouter, useRouterState } from "@tanst
 import {
   BarChart3,
   Bot,
+  Building2,
   ClipboardList,
   FileSpreadsheet,
   Truck,
@@ -155,6 +156,12 @@ function AppSidebar() {
                 active={pathname.startsWith("/ventas")}
               />
               <SidebarNavItem
+                to="/clientes"
+                label="Clientes"
+                icon={Building2}
+                active={pathname.startsWith("/clientes")}
+              />
+              <SidebarNavItem
                 to="/vendedores"
                 label="Vendedores"
                 icon={UserRound}
@@ -210,7 +217,7 @@ function SidebarNavItem({
   icon: Icon,
   active,
 }: {
-  to: "/" | "/carga" | "/ventas" | "/vendedores" | "/chat";
+  to: "/" | "/carga" | "/ventas" | "/clientes" | "/vendedores" | "/chat";
   label: string;
   icon: LucideIcon;
   active: boolean;

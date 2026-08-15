@@ -5,7 +5,9 @@ import {
   listarVentas,
   buscarClientes,
   obtenerAlertas,
+  obtenerDetalleAlerta,
   mensajeError,
+  obtenerClientesResumen,
   obtenerDashboard,
   obtenerFiltros,
   obtenerResumen,
@@ -69,6 +71,25 @@ export const alertasQueryOptions = (filtros: Filtros) => {
   });
 };
 
+/** Filas que explican una alerta; solo se pide al abrir el modal. */
+export const detalleAlertaQueryOptions = (clave: string | null, filtros: Filtros) => {
+  const { cliente, vendedor, canal, ciudad, zona } = filtros;
+  const clavesFiltro: Filtros = {
+    ...(cliente ? { cliente } : {}),
+    ...(vendedor ? { vendedor } : {}),
+    ...(canal ? { canal } : {}),
+    ...(ciudad ? { ciudad } : {}),
+    ...(zona ? { zona } : {}),
+  };
+  return queryOptions({
+    queryKey: ["alerta-detalle", clave, clavesFiltro] as const,
+    queryFn: () => obtenerDetalleAlerta(clave as string, clavesFiltro),
+    enabled: clave !== null,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+};
+
 /** Listas de opciones para los selectores de filtro. */
 export const filtrosQueryOptions = () =>
   queryOptions({
@@ -88,6 +109,13 @@ export const ventasQueryOptions = (filtros: Filtros, page: number, pageSize: num
   queryOptions({
     queryKey: ["ventas", filtros, page, pageSize] as const,
     queryFn: () => listarVentas({ ...filtros, page, pageSize }),
+  });
+
+/** Resumen agregado por cliente. */
+export const clientesResumenQueryOptions = (filtros: Filtros) =>
+  queryOptions({
+    queryKey: ["clientes-resumen", filtros] as const,
+    queryFn: () => obtenerClientesResumen(filtros),
   });
 
 /** Resumen agregado por vendedor. */
@@ -140,6 +168,7 @@ export async function invalidarDatosComerciales(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ["filtros"] }),
     queryClient.invalidateQueries({ queryKey: ["ventas"] }),
     queryClient.invalidateQueries({ queryKey: ["vendedores"] }),
+    queryClient.invalidateQueries({ queryKey: ["clientes-resumen"] }),
   ]);
 }
 

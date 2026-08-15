@@ -162,6 +162,7 @@ function Dashboard() {
           {backend ? (
             <AlertasImportantes
               alertas={alertasQuery.data?.alertas ?? []}
+              filtros={filtros}
               cargando={alertasQuery.isPending}
               error={alertasQuery.isError}
               onRetry={() => void alertasQuery.refetch()}

@@ -1,5 +1,7 @@
 import type {
   AlertasData,
+  ClientesData,
+  DetalleAlerta,
   DashboardData,
   Filtros,
   OpcionesFiltro,
@@ -21,9 +23,11 @@ import type {
  *  GET    /api/uploads                -> historial de cargas
  *  GET    /api/uploads/:id            -> estado de un procesamiento
  *  GET    /api/dashboard              -> KPIs + series + rankings (query: desde, hasta, cliente, vendedor, canal, ciudad, zona)
+ *  GET    /api/dashboard/alertas/:clave -> filas que explican una alerta (mismos filtros)
  *  GET    /api/dashboard/alertas      -> alertas de caída/crecimiento (query: cliente, vendedor, canal, ciudad, zona)
  *  GET    /api/filtros              -> listas de clientes / vendedores / canales / ciudades / zonas
  *  GET    /api/clientes               -> búsqueda de clientes por nombre (query: q, limite)
+ *  GET    /api/clientes/resumen       -> KPIs + resumen agregado por cliente (query: fechas + filtros)
  *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
  *  GET    /api/vendedores             -> KPIs + resumen agregado por vendedor (query: fechas + vendedor + cliente)
  */
@@ -177,12 +181,24 @@ export const obtenerAlertas = (filtros: Filtros = {}) => {
   );
 };
 
+/** GET /api/dashboard/alertas/:clave */
+export const obtenerDetalleAlerta = (clave: string, filtros: Filtros = {}) => {
+  const { cliente, vendedor, canal, ciudad, zona } = filtros;
+  return request<DetalleAlerta>(
+    `/api/dashboard/alertas/${encodeURIComponent(clave)}${qs({ cliente, vendedor, canal, ciudad, zona })}`,
+  );
+};
+
 /** GET /api/filtros */
 export const obtenerFiltros = () => request<OpcionesFiltro>("/api/filtros");
 
 /** GET /api/clientes — búsqueda de clientes por nombre */
 export const buscarClientes = (q: string, limite = 50) =>
   request<string[]>(`/api/clientes${qs({ q, limite })}`);
+
+/** GET /api/clientes/resumen */
+export const obtenerClientesResumen = (filtros: Filtros & { desde?: string; hasta?: string } = {}) =>
+  request<ClientesData>(`/api/clientes/resumen${qs(filtros)}`);
 
 /** GET /api/ventas */
 export const listarVentas = (params: Filtros & { page?: number; pageSize?: number } = {}) =>

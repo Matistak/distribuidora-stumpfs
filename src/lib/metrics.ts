@@ -1,4 +1,6 @@
 import type {
+  ClienteResumen,
+  ClientesData,
   ComparativoMensual,
   DashboardData,
   Filtros,
@@ -53,6 +55,117 @@ export function opcionesFiltro(rows: VentaRow[]): OpcionesFiltro {
     canales: uniq(rows.map((r) => r.canal)),
     ciudades: uniq(rows.map((r) => r.ciudad)),
     zonas: uniq(rows.map((r) => r.zona)),
+  };
+}
+
+/**
+ * Resumen agregado por cliente (modo local). Replica la logica del endpoint
+ * GET /api/clientes/resumen del backend para que la vista funcione sin conexion.
+ * Los KPIs (`dataKpis`) ignoran el filtro de cliente: responden al resto.
+ */
+export function resumenClientesLocal(rows: VentaRow[], f: Filtros): ClientesData {
+  const agrupar = (filas: VentaRow[]) => {
+    const porCliente = new Map<
+      string,
+      {
+        vendedor: string;
+        ciudad: string;
+        canal: string;
+        facturas: Set<string>;
+        productos: Set<number>;
+        unidades: number;
+        ventaBruta: number;
+        ventaNeta: number;
+        costo: number;
+        ultimaCompra: string;
+      }
+    >();
+
+    for (const r of filas) {
+      const nombre = etiquetaCliente(r.ruc, r.razonSocial) ?? "SIN DATO";
+      let agg = porCliente.get(nombre);
+      if (!agg) {
+        agg = {
+          vendedor: r.vendedor ?? "SIN DATO",
+          ciudad: r.ciudad ?? "SIN DATO",
+          canal: r.canal ?? "SIN DATO",
+          facturas: new Set(),
+          productos: new Set(),
+          unidades: 0,
+          ventaBruta: 0,
+          ventaNeta: 0,
+          costo: 0,
+          ultimaCompra: "",
+        };
+        porCliente.set(nombre, agg);
+      }
+      agg.facturas.add(r.nroDoc);
+      agg.productos.add(r.codProducto);
+      agg.unidades += r.vtaUnit ?? 0;
+      agg.ventaBruta += r.montoIvaBrutaGua ?? 0;
+      agg.ventaNeta += r.montoVtaNetaGua ?? 0;
+      agg.costo += r.costoVtaGua ?? 0;
+      // El vendedor/ciudad/canal mostrados son los de la compra mas reciente.
+      if (r.fecha > agg.ultimaCompra) {
+        agg.ultimaCompra = r.fecha;
+        agg.vendedor = r.vendedor ?? "SIN DATO";
+        agg.ciudad = r.ciudad ?? "SIN DATO";
+        agg.canal = r.canal ?? "SIN DATO";
+      }
+    }
+
+    const ventaNeta = sum([...porCliente.values()].map((a) => a.ventaNeta));
+
+    const data: ClienteResumen[] = [...porCliente.entries()]
+      .map(([cliente, a]) => {
+        const neta = a.ventaNeta;
+        return {
+          cliente,
+          vendedor: a.vendedor,
+          ciudad: a.ciudad,
+          canal: a.canal,
+          facturas: a.facturas.size,
+          productos: a.productos.size,
+          unidades: a.unidades,
+          ventaBruta: a.ventaBruta,
+          ventaNeta: neta,
+          costo: a.costo,
+          margenPorc: neta ? (neta - a.costo) / neta : 0,
+          ticketPromedio: a.facturas.size ? neta / a.facturas.size : 0,
+          participacion: ventaNeta ? neta / ventaNeta : 0,
+          ultimaCompra: a.ultimaCompra,
+        };
+      })
+      .sort((a, b) => b.ventaNeta - a.ventaNeta);
+
+    return { data, ventaNeta };
+  };
+
+  const filtradas = aplicarFiltros(rows, f);
+  const { cliente: _cliente, ...filtrosSinCliente } = f;
+  const sinCliente = aplicarFiltros(rows, filtrosSinCliente);
+
+  const resumen = agrupar(filtradas);
+  const resumenKpis = agrupar(sinCliente);
+
+  const facturas = new Set(sinCliente.map((r) => r.nroDoc)).size;
+  const costoTotal = sum(sinCliente.map((r) => r.costoVtaGua));
+  const ventaNeta = resumenKpis.ventaNeta;
+
+  const concentracionTop10 = resumenKpis.data.slice(0, 10).reduce((acc, r) => acc + r.ventaNeta, 0);
+
+  return {
+    kpis: {
+      clientesActivos: resumenKpis.data.length,
+      ventaNeta,
+      facturas,
+      unidades: sum(sinCliente.map((r) => r.vtaUnit)),
+      ticketPromedio: facturas ? ventaNeta / facturas : 0,
+      margenPorc: ventaNeta ? (ventaNeta - costoTotal) / ventaNeta : 0,
+      concentracionTop10: ventaNeta ? concentracionTop10 / ventaNeta : 0,
+    },
+    data: resumen.data,
+    dataKpis: resumenKpis.data,
   };
 }
 

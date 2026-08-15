@@ -1,8 +1,17 @@
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { AlertTriangle, Package, TrendingDown, TrendingUp, UserX } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  Package,
+  TrendingDown,
+  TrendingUp,
+  UserX,
+} from "lucide-react";
+import { AlertaDetalleModal } from "./AlertaDetalleModal";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/metrics";
-import type { Alerta, AlertaTono } from "@/lib/types";
+import type { Alerta, AlertaTono, Filtros } from "@/lib/types";
 
 const ICONO: Record<string, LucideIcon> = {
   vendedoresEnCaida: TrendingDown,
@@ -32,13 +41,25 @@ const TONO: Record<AlertaTono, { caja: string; icono: string; valor: string }> =
 
 const CLAVES_PLACEHOLDER = Object.keys(ICONO);
 
-function Tarjeta({ alerta }: { alerta: Alerta }) {
+function Tarjeta({ alerta, onAbrir }: { alerta: Alerta; onAbrir: () => void }) {
   const Icono = ICONO[alerta.clave] ?? AlertTriangle;
   const tono = TONO[alerta.tono];
   const sinDatos = alerta.valor === null || alerta.estado === "sin-datos";
 
   return (
-    <div className={cn("rounded-xl border p-5 shadow-card", tono.caja)}>
+    <button
+      type="button"
+      onClick={onAbrir}
+      disabled={sinDatos}
+      aria-label={`Ver detalle de ${alerta.titulo}`}
+      className={cn(
+        "group w-full rounded-xl border p-5 text-left shadow-card transition",
+        tono.caja,
+        sinDatos
+          ? "cursor-default"
+          : "cursor-pointer hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      )}
+    >
       <div className="flex items-start gap-2.5">
         <Icono
           className={cn("size-4 shrink-0", sinDatos ? "text-muted-foreground/40" : tono.icono)}
@@ -47,6 +68,9 @@ function Tarjeta({ alerta }: { alerta: Alerta }) {
         <p className="text-[11px] font-bold uppercase leading-tight tracking-wider text-muted-foreground">
           {alerta.titulo}
         </p>
+        {sinDatos ? null : (
+          <ChevronRight className="ml-auto size-4 shrink-0 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+        )}
       </div>
 
       <p
@@ -64,7 +88,7 @@ function Tarjeta({ alerta }: { alerta: Alerta }) {
       {sinDatos ? null : (
         <p className="mt-0.5 text-xs leading-tight text-muted-foreground/80">{alerta.detalle}</p>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -84,15 +108,20 @@ function TarjetaCargando({ clave }: { clave: string }) {
 
 export function AlertasImportantes({
   alertas,
+  filtros,
   cargando,
   error,
   onRetry,
 }: {
   alertas: Alerta[];
+  /** Mismos filtros del tablero: el detalle debe cuadrar con el contador. */
+  filtros: Filtros;
   cargando?: boolean;
   error?: boolean;
   onRetry?: () => void;
 }) {
+  const [abierta, setAbierta] = useState<Alerta | null>(null);
+
   return (
     <div className="space-y-3">
       <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -116,9 +145,19 @@ export function AlertasImportantes({
         <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-4">
           {cargando
             ? CLAVES_PLACEHOLDER.map((clave) => <TarjetaCargando key={clave} clave={clave} />)
-            : alertas.map((alerta) => <Tarjeta key={alerta.clave} alerta={alerta} />)}
+            : alertas.map((alerta) => (
+                <Tarjeta key={alerta.clave} alerta={alerta} onAbrir={() => setAbierta(alerta)} />
+              ))}
         </div>
       )}
+
+      <AlertaDetalleModal
+        alerta={abierta}
+        filtros={filtros}
+        onOpenChange={(a) => {
+          if (!a) setAbierta(null);
+        }}
+      />
     </div>
   );
 }
