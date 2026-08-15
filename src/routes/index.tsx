@@ -1,27 +1,26 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BarChart3, Boxes, FileText, Layers, Percent, Receipt, Users, Wallet } from "lucide-react";
+import { BarChart3, Boxes, FileText, Wallet } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { FiltrosPanel } from "@/components/dashboard/FiltrosPanel";
 import {
-  DonaParticipacion,
   EvolucionDiaria,
+  EvolucionMensual,
   RankingBarras,
   TablaRanking,
 } from "@/components/dashboard/Charts";
 import { KpiCard, Panel } from "@/components/dashboard/KpiCard";
+import { ResumenEjecutivo } from "@/components/dashboard/ResumenEjecutivo";
 import { DashboardSkeleton } from "@/components/dashboard/Loaders";
-import {
-  aplicarFiltros,
-  calcularDashboard,
-  fmtGs,
-  fmtNum,
-  fmtPct,
-  opcionesFiltro,
-} from "@/lib/metrics";
+import { aplicarFiltros, calcularDashboard, fmtGs, fmtNum, opcionesFiltro } from "@/lib/metrics";
 import { backendConectado } from "@/lib/api";
-import { dashboardQueryOptions, filtrosQueryOptions, useQueryErrorToast } from "@/lib/queries";
+import {
+  dashboardQueryOptions,
+  filtrosQueryOptions,
+  resumenQueryOptions,
+  useQueryErrorToast,
+} from "@/lib/queries";
 import { filtroAnioVigente } from "@/lib/filtros";
 import type { Filtros, OpcionesFiltro } from "@/lib/types";
 import { useUploadState } from "@/lib/use-upload-state";
@@ -47,6 +46,7 @@ function Dashboard() {
 
   const dashboardQuery = useQuery({ ...dashboardQueryOptions(filtros), enabled: backend });
   const filtrosQuery = useQuery({ ...filtrosQueryOptions(), enabled: backend });
+  const resumenQuery = useQuery({ ...resumenQueryOptions(filtros), enabled: backend });
 
   useQueryErrorToast(
     dashboardQuery,
@@ -61,7 +61,15 @@ function Dashboard() {
 
   const opcionesLocales = useMemo(() => opcionesFiltro(rows), [rows]);
   const filtradas = useMemo(() => aplicarFiltros(rows, filtros), [rows, filtros]);
-  const dashboardLocal = useMemo(() => calcularDashboard(filtradas), [filtradas]);
+  // Sin filtro de fechas: necesario para poder comparar contra el mes anterior.
+  const filtradasSinFechas = useMemo(() => {
+    const { desde: _desde, hasta: _hasta, ...resto } = filtros;
+    return aplicarFiltros(rows, resto);
+  }, [rows, filtros]);
+  const dashboardLocal = useMemo(
+    () => calcularDashboard(filtradas, filtradasSinFechas),
+    [filtradas, filtradasSinFechas],
+  );
   const opciones = backend ? (filtrosQuery.data ?? OPCIONES_VACIAS) : opcionesLocales;
   const d = backend ? (dashboardQuery.data ?? dashboardLocal) : dashboardLocal;
   const hayDatos = backend ? Boolean(dashboardQuery.data?.periodo.desde) : rows.length > 0;
@@ -139,73 +147,74 @@ function Dashboard() {
 
       <main className="@container mx-auto max-w-[1600px] space-y-6 px-6 py-7 lg:px-10">
         <section className="@container min-w-0 space-y-6">
+          {backend ? (
+            <ResumenEjecutivo
+              kpis={resumenQuery.data?.kpis ?? []}
+              cargando={resumenQuery.isPending}
+              error={resumenQuery.isError}
+              onRetry={() => void resumenQuery.refetch()}
+            />
+          ) : null}
+
           {cargandoBackend ? (
             <DashboardSkeleton />
           ) : (
             <>
-              <div className="grid gap-5 @md:grid-cols-2 @4xl:grid-cols-4">
-                <KpiCard
-                  titulo="Venta neta"
-                  valor={fmtGs(d.kpis.ventaNeta)}
-                  detalle={`Bruta: ${fmtGs(d.kpis.ventaBruta)}`}
-                  icon={Wallet}
-                />
-                <KpiCard
-                  titulo="Facturas"
-                  valor={fmtNum(d.kpis.cantidadFacturas)}
-                  detalle={`${fmtNum(d.kpis.notasCredito)} notas de crédito`}
-                  icon={FileText}
-                  tone="chart5"
-                />
-                <KpiCard
-                  titulo="Ticket promedio"
-                  valor={fmtGs(d.kpis.ticketPromedio)}
-                  icon={Receipt}
-                  tone="warning"
-                />
-                <KpiCard
-                  titulo="Clientes activos"
-                  valor={fmtNum(d.kpis.clientesActivos)}
-                  icon={Users}
-                  tone="success"
-                />
-                <KpiCard
-                  titulo="Unidades vendidas"
-                  valor={fmtNum(d.kpis.unidadesVendidas)}
-                  icon={Boxes}
-                  tone="chart6"
-                />
-                <KpiCard
-                  titulo="Productos distintos"
-                  valor={fmtNum(d.kpis.productosDistintos)}
-                  icon={Layers}
-                  tone="primary"
-                />
-                <KpiCard
-                  titulo="Margen bruto"
-                  valor={fmtPct(d.kpis.margenPorc)}
-                  detalle="Sobre venta neta"
-                  icon={Percent}
-                  tone="success"
-                />
-                <KpiCard
-                  titulo="Vendedores activos"
-                  valor={fmtNum(opciones.vendedores.length)}
-                  icon={BarChart3}
-                  tone="destructive"
-                />
+              <div className="space-y-3">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Totales del período filtrado
+                  {hayDatos ? ` · ${d.periodo.desde} → ${d.periodo.hasta}` : ""}
+                </h2>
+                <div className="grid gap-5 @md:grid-cols-2 @4xl:grid-cols-4">
+                  <KpiCard
+                    titulo="Venta neta"
+                    valor={fmtGs(d.kpis.ventaNeta)}
+                    detalle={`Bruta: ${fmtGs(d.kpis.ventaBruta)}`}
+                    icon={Wallet}
+                  />
+                  <KpiCard
+                    titulo="Unidades vendidas"
+                    valor={fmtNum(d.kpis.unidadesVendidas)}
+                    icon={Boxes}
+                    tone="chart6"
+                  />
+                  <KpiCard
+                    titulo="Notas de crédito"
+                    valor={fmtNum(d.kpis.notasCredito)}
+                    detalle={`sobre ${fmtNum(d.kpis.cantidadFacturas)} facturas`}
+                    icon={FileText}
+                    tone="chart5"
+                  />
+                  <KpiCard
+                    titulo="Vendedores activos"
+                    valor={fmtNum(opciones.vendedores.length)}
+                    icon={BarChart3}
+                    tone="destructive"
+                  />
+                </div>
               </div>
 
               {hayDatos && d ? (
                 <>
-                  <div className="grid gap-4 @5xl:grid-cols-3">
-                    <Panel titulo="Evolución de ventas diarias" className="@5xl:col-span-2">
-                      <EvolucionDiaria data={d.ventasPorDia} />
-                    </Panel>
-                    <Panel titulo="Ventas por ciudad">
-                      <DonaParticipacion data={d.ventasPorCiudad} />
-                    </Panel>
-                  </div>
+                  <Panel titulo="Evolución de ventas diarias">
+                    <EvolucionDiaria
+                      data={
+                        d.ventasComparativoMensual ?? {
+                          mesActual: "",
+                          mesAnterior: "",
+                          puntos: [],
+                        }
+                      }
+                    />
+                  </Panel>
+
+                  <Panel
+                    titulo={`Evolución de ventas mensuales${
+                      d.ventasPorMes?.anho ? ` · ${d.ventasPorMes.anho}` : ""
+                    }`}
+                  >
+                    <EvolucionMensual data={d.ventasPorMes ?? { anho: 0, puntos: [] }} />
+                  </Panel>
 
                   <div className="grid gap-4 @3xl:grid-cols-2">
                     <Panel titulo="Ventas por vendedor (top 10)">
@@ -216,10 +225,7 @@ function Dashboard() {
                     </Panel>
                   </div>
 
-                  <div className="grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
-                    <Panel titulo="Ventas por canal">
-                      <TablaRanking data={d.ventasPorCanal} etiqueta="Canal" />
-                    </Panel>
+                  <div className="grid gap-4 @3xl:grid-cols-2">
                     <Panel titulo="Top 5 clientes">
                       <TablaRanking data={d.topClientes} etiqueta="Cliente" />
                     </Panel>

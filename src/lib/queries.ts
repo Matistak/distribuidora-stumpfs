@@ -7,6 +7,7 @@ import {
   mensajeError,
   obtenerDashboard,
   obtenerFiltros,
+  obtenerResumen,
   obtenerVendedores,
 } from "./api";
 import {
@@ -31,6 +32,23 @@ export const dashboardQueryOptions = (filtros: Filtros) =>
     staleTime: Infinity,
     gcTime: Infinity,
   });
+
+export const resumenQueryOptions = (filtros: Filtros) => {
+  const { cliente, vendedor, canal, ciudad, zona } = filtros;
+  const clave: Filtros = {
+    ...(cliente ? { cliente } : {}),
+    ...(vendedor ? { vendedor } : {}),
+    ...(canal ? { canal } : {}),
+    ...(ciudad ? { ciudad } : {}),
+    ...(zona ? { zona } : {}),
+  };
+  return queryOptions({
+    queryKey: ["resumen", clave] as const,
+    queryFn: () => obtenerResumen(clave),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+};
 
 /** Listas de opciones para los selectores de filtro. */
 export const filtrosQueryOptions = () =>
@@ -98,6 +116,7 @@ export const conversacionQueryOptions = (id: number | null) =>
 export async function invalidarDatosComerciales(queryClient: QueryClient) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+    queryClient.invalidateQueries({ queryKey: ["resumen"] }),
     queryClient.invalidateQueries({ queryKey: ["filtros"] }),
     queryClient.invalidateQueries({ queryKey: ["ventas"] }),
     queryClient.invalidateQueries({ queryKey: ["vendedores"] }),

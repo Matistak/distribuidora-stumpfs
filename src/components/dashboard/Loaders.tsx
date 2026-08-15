@@ -125,20 +125,16 @@ export function DashboardSkeleton() {
   return (
     <section className="@container min-w-0 space-y-6" aria-busy aria-label="Cargando dashboard">
       <div className="grid gap-5 @md:grid-cols-2 @4xl:grid-cols-4">
-        {Array.from({ length: 8 }, (_, i) => (
+        {Array.from({ length: 4 }, (_, i) => (
           <KpiSkeleton key={i} />
         ))}
       </div>
-      <div className="grid gap-4 @5xl:grid-cols-3">
-        <PanelSkeleton className="@5xl:col-span-2" />
-        <PanelSkeleton />
-      </div>
+      <PanelSkeleton />
       <div className="grid gap-4 @3xl:grid-cols-2">
         <PanelSkeleton />
         <PanelSkeleton />
       </div>
-      <div className="grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
-        <PanelSkeleton />
+      <div className="grid gap-4 @3xl:grid-cols-2">
         <PanelSkeleton />
         <PanelSkeleton />
       </div>

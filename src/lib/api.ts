@@ -1,4 +1,11 @@
-import type { DashboardData, Filtros, OpcionesFiltro, VentaRow, VendedoresData } from "./types";
+import type {
+  DashboardData,
+  Filtros,
+  OpcionesFiltro,
+  ResumenData,
+  VentaRow,
+  VendedoresData,
+} from "./types";
 
 /**
  * ============================================================
@@ -152,6 +159,13 @@ export const estadoCarga = (id: number) => request<UploadHistorial>(`/api/upload
 /** GET /api/dashboard */
 export const obtenerDashboard = (filtros: Filtros & { desde?: string; hasta?: string } = {}) =>
   request<DashboardData>(`/api/dashboard${qs(filtros)}`);
+
+export const obtenerResumen = (filtros: Filtros = {}) => {
+  const { cliente, vendedor, canal, ciudad, zona } = filtros;
+  return request<ResumenData>(
+    `/api/dashboard/resumen${qs({ cliente, vendedor, canal, ciudad, zona })}`,
+  );
+};
 
 /** GET /api/filtros */
 export const obtenerFiltros = () => request<OpcionesFiltro>("/api/filtros");

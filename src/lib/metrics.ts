@@ -1,8 +1,10 @@
 import type {
+  ComparativoMensual,
   DashboardData,
   Filtros,
   OpcionesFiltro,
   RankingItem,
+  SerieAnual,
   SeriePunto,
   VentaRow,
   VendedorResumen,
@@ -152,11 +154,102 @@ export function resumenVendedoresLocal(rows: VentaRow[], f: Filtros): Vendedores
   };
 }
 
+const diasDelMes = (anho: number, mes: number) => new Date(anho, mes, 0).getDate();
+const claveMes = (anho: number, mes: number) => `${anho}-${String(mes).padStart(2, "0")}`;
+
+/**
+ * Serie diaria del mes vigente vs el mes anterior.
+ * El mes vigente es el del ultimo dia con datos; los dias sin ventas van en 0
+ * en ambas series para que las lineas nunca se corten.
+ * `rows` debe venir sin filtro de fechas (si no, el mes anterior queda vacio).
+ */
+export function comparativoMensual(rows: VentaRow[], referencia?: string): ComparativoMensual {
+  const fechas = rows.map((r) => r.fecha).filter(Boolean);
+  const ultima = referencia || fechas.reduce((a, b) => (b > a ? b : a), "");
+  if (!ultima) return { mesActual: "", mesAnterior: "", puntos: [] };
+
+  const anho = Number(ultima.slice(0, 4));
+  const mes = Number(ultima.slice(5, 7));
+  const anhoPrev = mes === 1 ? anho - 1 : anho;
+  const mesPrev = mes === 1 ? 12 : mes - 1;
+
+  const acumular = (a: number, m: number) => {
+    const map = new Map<number, number>();
+    for (const r of rows) {
+      if (r.anho !== a || r.mes !== m) continue;
+      map.set(r.dia, (map.get(r.dia) ?? 0) + (r.montoVtaNetaGua ?? 0));
+    }
+    return map;
+  };
+
+  const actual = acumular(anho, mes);
+  const anterior = acumular(anhoPrev, mesPrev);
+  const dias = Math.max(diasDelMes(anho, mes), diasDelMes(anhoPrev, mesPrev));
+
+  return {
+    mesActual: claveMes(anho, mes),
+    mesAnterior: claveMes(anhoPrev, mesPrev),
+    puntos: Array.from({ length: dias }, (_, i) => {
+      const dia = i + 1;
+      return {
+        dia,
+        label: String(dia),
+        actual: actual.get(dia) ?? 0,
+        anterior: anterior.get(dia) ?? 0,
+      };
+    }),
+  };
+}
+
+const MESES_CORTOS = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+];
+
+/**
+ * Serie de los 12 meses del anho de referencia; los meses sin ventas van en 0.
+ * `rows` debe venir sin filtro de fechas para que el anho completo se vea
+ * aunque el rango filtrado sea parcial.
+ */
+export function serieAnual(rows: VentaRow[], referencia?: string): SerieAnual {
+  const fechas = rows.map((r) => r.fecha).filter(Boolean);
+  const ultima = referencia || fechas.reduce((a, b) => (b > a ? b : a), "");
+  const puntosVacios = MESES_CORTOS.map((label) => ({ label, valor: 0 }));
+  if (!ultima) return { anho: 0, puntos: puntosVacios };
+
+  const anho = Number(ultima.slice(0, 4));
+  const porMes = new Map<number, number>();
+  for (const r of rows) {
+    if (r.anho !== anho) continue;
+    porMes.set(r.mes, (porMes.get(r.mes) ?? 0) + (r.montoVtaNetaGua ?? 0));
+  }
+
+  return {
+    anho,
+    puntos: MESES_CORTOS.map((label, i) => ({ label, valor: porMes.get(i + 1) ?? 0 })),
+  };
+}
+
 /**
  * Calculo de metricas. Esta misma logica debe existir en el backend
  * (endpoint GET /api/dashboard) cuando se conecte la base de datos.
+ * `rowsComparativo` son las filas sin filtro de fechas, usadas solo para la
+ * serie mes vigente vs mes anterior.
  */
-export function calcularDashboard(rows: VentaRow[]): DashboardData {
+export function calcularDashboard(
+  rows: VentaRow[],
+  rowsComparativo: VentaRow[] = rows,
+): DashboardData {
   const facturas = new Set(rows.map((r) => r.nroDoc));
   const clientes = new Set(rows.map((r) => r.codCliente).filter((c): c is number => c !== null));
   const productos = new Set(rows.map((r) => r.codProducto));
@@ -190,6 +283,8 @@ export function calcularDashboard(rows: VentaRow[]): DashboardData {
       margenPorc: ventaNeta ? (ventaNeta - costo) / ventaNeta : 0,
     },
     ventasPorDia,
+    ventasComparativoMensual: comparativoMensual(rowsComparativo, fechas[fechas.length - 1] ?? ""),
+    ventasPorMes: serieAnual(rowsComparativo, fechas[fechas.length - 1] ?? ""),
     ventasPorVendedor: ranking(rows, (r) => r.vendedor),
     ventasPorCiudad: ranking(rows, (r) => r.ciudad, 7),
     ventasPorCanal: ranking(rows, (r) => r.canal, 8),

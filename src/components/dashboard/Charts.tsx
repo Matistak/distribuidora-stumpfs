@@ -5,6 +5,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -12,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { RankingItem, SeriePunto } from "@/lib/types";
+import type { ComparativoMensual, RankingItem, SerieAnual } from "@/lib/types";
 import { fmtCompact, fmtGs, fmtPct } from "@/lib/metrics";
 
 const COLORS = [
@@ -32,15 +35,54 @@ const tooltipStyle = {
   color: "var(--foreground)",
 } as const;
 
-export function EvolucionDiaria({ data }: { data: SeriePunto[] }) {
+const MESES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
+const MESES_CORTOS = MESES.map((m) => m.slice(0, 3));
+
+/** "2026-08" -> "Agosto 2026" */
+const nombreMes = (clave: string) => {
+  if (!clave) return "";
+  const [anho, mes] = clave.split("-");
+  return `${MESES[Number(mes) - 1] ?? clave} ${anho}`;
+};
+
+export function EvolucionDiaria({ data }: { data: ComparativoMensual }) {
+  const etiquetaActual = nombreMes(data.mesActual) || "Mes vigente";
+  const etiquetaAnterior = nombreMes(data.mesAnterior) || "Mes anterior";
+
+  if (data.puntos.length === 0) {
+    return (
+      <div className="flex h-full min-h-60 items-center justify-center text-sm text-muted-foreground">
+        Sin datos para mostrar
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full min-h-60 min-w-0">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+    <div className="min-w-0">
+      <ResponsiveContainer width="100%" height={300} minWidth={0}>
+        <AreaChart data={data.puntos} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="gradVentas" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
               <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+            </linearGradient>
+            <linearGradient id="gradVentasPrev" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -52,17 +94,76 @@ export function EvolucionDiaria({ data }: { data: SeriePunto[] }) {
           />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(v: number) => [fmtGs(v), "Venta neta"]}
+            formatter={(v: number, name) => [fmtGs(v), name as string]}
             labelFormatter={(l) => `Día ${l}`}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 12 }}
+            iconType="plainline"
+            formatter={(value) => <span style={{ color: "var(--muted-foreground)" }}>{value}</span>}
           />
           <Area
             type="monotone"
-            dataKey="valor"
+            dataKey="anterior"
+            name={etiquetaAnterior}
+            stroke="var(--chart-4)"
+            strokeWidth={2}
+            strokeDasharray="5 4"
+            fill="url(#gradVentasPrev)"
+            connectNulls
+            isAnimationActive={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="actual"
+            name={etiquetaActual}
             stroke="var(--chart-1)"
             strokeWidth={2.5}
             fill="url(#gradVentas)"
+            connectNulls
+            isAnimationActive={false}
           />
         </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Linea unica con el total vendido en cada uno de los 12 meses del anho. */
+export function EvolucionMensual({ data }: { data: SerieAnual }) {
+  // Siempre 12 puntos: los meses sin ventas van en 0.
+  const puntos = MESES_CORTOS.map((label, i) => ({
+    label,
+    valor: data.puntos[i]?.valor ?? 0,
+  }));
+
+  return (
+    <div className="min-w-0">
+      <ResponsiveContainer width="100%" height={300} minWidth={0}>
+        <LineChart data={puntos} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+          <YAxis
+            tickFormatter={fmtCompact}
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            width={52}
+          />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            formatter={(v: number) => [fmtGs(v), "Venta neta"]}
+            labelFormatter={(l) => (data.anho ? `${l} ${data.anho}` : String(l))}
+          />
+          <Line
+            type="monotone"
+            dataKey="valor"
+            name="Venta neta"
+            stroke="var(--chart-1)"
+            strokeWidth={2.5}
+            dot={{ r: 3, fill: "var(--chart-1)", strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            isAnimationActive={false}
+          />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
