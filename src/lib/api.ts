@@ -1,4 +1,5 @@
 import type {
+  AlertasData,
   DashboardData,
   Filtros,
   OpcionesFiltro,
@@ -20,7 +21,8 @@ import type {
  *  GET    /api/uploads                -> historial de cargas
  *  GET    /api/uploads/:id            -> estado de un procesamiento
  *  GET    /api/dashboard              -> KPIs + series + rankings (query: desde, hasta, cliente, vendedor, canal, ciudad, zona)
- *  GET    /api/filtros                -> listas de clientes / vendedores / canales / ciudades / zonas
+ *  GET    /api/dashboard/alertas      -> alertas de caída/crecimiento (query: cliente, vendedor, canal, ciudad, zona)
+ *  GET    /api/filtros              -> listas de clientes / vendedores / canales / ciudades / zonas
  *  GET    /api/clientes               -> búsqueda de clientes por nombre (query: q, limite)
  *  GET    /api/ventas                 -> filas paginadas (query: page, pageSize, fechas + filtros)
  *  GET    /api/vendedores             -> KPIs + resumen agregado por vendedor (query: fechas + vendedor + cliente)
@@ -164,6 +166,14 @@ export const obtenerResumen = (filtros: Filtros = {}) => {
   const { cliente, vendedor, canal, ciudad, zona } = filtros;
   return request<ResumenData>(
     `/api/dashboard/resumen${qs({ cliente, vendedor, canal, ciudad, zona })}`,
+  );
+};
+
+/** GET /api/dashboard/alertas */
+export const obtenerAlertas = (filtros: Filtros = {}) => {
+  const { cliente, vendedor, canal, ciudad, zona } = filtros;
+  return request<AlertasData>(
+    `/api/dashboard/alertas${qs({ cliente, vendedor, canal, ciudad, zona })}`,
   );
 };
 

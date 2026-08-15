@@ -12,10 +12,12 @@ import {
 } from "@/components/dashboard/Charts";
 import { KpiCard, Panel } from "@/components/dashboard/KpiCard";
 import { ResumenEjecutivo } from "@/components/dashboard/ResumenEjecutivo";
+import { AlertasImportantes } from "@/components/dashboard/AlertasImportantes";
 import { DashboardSkeleton } from "@/components/dashboard/Loaders";
 import { aplicarFiltros, calcularDashboard, fmtGs, fmtNum, opcionesFiltro } from "@/lib/metrics";
 import { backendConectado } from "@/lib/api";
 import {
+  alertasQueryOptions,
   dashboardQueryOptions,
   filtrosQueryOptions,
   resumenQueryOptions,
@@ -47,6 +49,7 @@ function Dashboard() {
   const dashboardQuery = useQuery({ ...dashboardQueryOptions(filtros), enabled: backend });
   const filtrosQuery = useQuery({ ...filtrosQueryOptions(), enabled: backend });
   const resumenQuery = useQuery({ ...resumenQueryOptions(filtros), enabled: backend });
+  const alertasQuery = useQuery({ ...alertasQueryOptions(filtros), enabled: backend });
 
   useQueryErrorToast(
     dashboardQuery,
@@ -153,6 +156,15 @@ function Dashboard() {
               cargando={resumenQuery.isPending}
               error={resumenQuery.isError}
               onRetry={() => void resumenQuery.refetch()}
+            />
+          ) : null}
+
+          {backend ? (
+            <AlertasImportantes
+              alertas={alertasQuery.data?.alertas ?? []}
+              cargando={alertasQuery.isPending}
+              error={alertasQuery.isError}
+              onRetry={() => void alertasQuery.refetch()}
             />
           ) : null}
 

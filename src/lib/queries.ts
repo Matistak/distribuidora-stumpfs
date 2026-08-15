@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   listarVentas,
   buscarClientes,
+  obtenerAlertas,
   mensajeError,
   obtenerDashboard,
   obtenerFiltros,
@@ -45,6 +46,24 @@ export const resumenQueryOptions = (filtros: Filtros) => {
   return queryOptions({
     queryKey: ["resumen", clave] as const,
     queryFn: () => obtenerResumen(clave),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+};
+
+/** Alertas de caída/crecimiento del mes vigente (ignora el filtro de fechas). */
+export const alertasQueryOptions = (filtros: Filtros) => {
+  const { cliente, vendedor, canal, ciudad, zona } = filtros;
+  const clave: Filtros = {
+    ...(cliente ? { cliente } : {}),
+    ...(vendedor ? { vendedor } : {}),
+    ...(canal ? { canal } : {}),
+    ...(ciudad ? { ciudad } : {}),
+    ...(zona ? { zona } : {}),
+  };
+  return queryOptions({
+    queryKey: ["alertas", clave] as const,
+    queryFn: () => obtenerAlertas(clave),
     staleTime: Infinity,
     gcTime: Infinity,
   });
@@ -117,6 +136,7 @@ export async function invalidarDatosComerciales(queryClient: QueryClient) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
     queryClient.invalidateQueries({ queryKey: ["resumen"] }),
+    queryClient.invalidateQueries({ queryKey: ["alertas"] }),
     queryClient.invalidateQueries({ queryKey: ["filtros"] }),
     queryClient.invalidateQueries({ queryKey: ["ventas"] }),
     queryClient.invalidateQueries({ queryKey: ["vendedores"] }),
