@@ -1,8 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes,
   CalendarRange,
-  FileText,
   Percent,
   Target,
   TrendingUp,
@@ -25,10 +23,10 @@ const ESTILO: Record<string, Estilo> = {
   margen: { icon: Percent, tone: "chart6", titulo: "Margen bruto" },
   clientesActivos: { icon: Users, tone: "chart5", titulo: "Clientes activos" },
   clientesNuevos: { icon: UserPlus, tone: "success", titulo: "Clientes nuevos" },
-  facturas: { icon: FileText, tone: "chart5", titulo: "Facturas" },
-  unidades: { icon: Boxes, tone: "chart6", titulo: "Unidades" },
   cumplimientoObjetivo: { icon: Target, tone: "primary", titulo: "Cumpl. objetivo" },
 };
+
+const OCULTAR = new Set(["facturas", "unidades"]);
 
 const DEFECTO: Estilo = { icon: TrendingUp, tone: "primary", titulo: "" };
 
@@ -61,9 +59,10 @@ export function ResumenEjecutivo({
 }) {
   const estadoCarga: EstadoTarjeta | null = cargando ? "cargando" : error ? "error" : null;
 
-  const items = estadoCarga
+  const items = (estadoCarga
     ? PLACEHOLDER.map((clave) => ({ clave, kpi: null as ResumenKpi | null }))
-    : kpis.map((kpi) => ({ clave: kpi.clave, kpi }));
+    : kpis.map((kpi) => ({ clave: kpi.clave, kpi }))
+  ).filter(({ clave }) => !OCULTAR.has(clave));
 
   return (
     <div className="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-5">
