@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
 import type { UploadFilaOmitida, UploadResponse } from "@/lib/api";
 import type { VentaRow } from "@/lib/types";
+import { fmtFecha } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -192,10 +193,7 @@ const COLUMNAS_VENTA: { clave: keyof VentaRow; titulo: string }[] = [
 function valorCelda(fila: VentaRow, clave: keyof VentaRow): string {
   const valor = fila[clave];
   if (valor === null || valor === undefined || valor === "") return "—";
-  if (clave === "fecha") {
-    const partes = String(valor).split("-");
-    return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : String(valor);
-  }
+  if (clave === "fecha") return fmtFecha(String(valor));
   if (typeof valor === "number") {
     return Number.isInteger(valor)
       ? valor.toLocaleString("es-PY")

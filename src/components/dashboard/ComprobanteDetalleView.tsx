@@ -10,13 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fmtGs, fmtNum } from "@/lib/metrics";
+import { fmtFecha, fmtGs, fmtNum } from "@/lib/metrics";
 import type { ComprobanteDetalle } from "@/lib/types";
-
-function fechaVisible(fecha: string) {
-  const partes = fecha.split("-");
-  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : fecha;
-}
 
 function Dato({ label, valor, destacado }: { label: string; valor: string; destacado?: boolean }) {
   return (
@@ -125,7 +120,7 @@ export function ComprobanteDetalleView({
       </header>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        <Dato label="Fecha" valor={fechaVisible(resumen.fecha)} />
+        <Dato label="Fecha" valor={fmtFecha(resumen.fecha)} />
         <Dato label="RUC" valor={resumen.ruc ?? "—"} />
         <Dato label="Vendedor" valor={resumen.vendedor ?? "—"} />
         <Dato label="Canal" valor={resumen.canal ?? "—"} />

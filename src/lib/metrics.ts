@@ -505,3 +505,18 @@ export const fmtCompact = (n: number) => {
   if (abs >= 1e3) return `${(n / 1e3).toFixed(0)} K`;
   return String(Math.round(n));
 };
+
+/**
+ * El backend guarda `fecha` como marca de tiempo ISO completa
+ * (`YYYY-MM-DDTHH:MM:SS.sssZ`). Para las tablas y fichas alcanza la parte de
+ * fecha: se recorta el tramo de hora sin convertir de zona horaria, porque el
+ * valor ya viene resuelto en UTC desde el origen.
+ */
+export const soloFecha = (valor: string | null | undefined) =>
+  valor ? String(valor).slice(0, 10) : "";
+
+/** `YYYY-MM-DD[Thh:mm...]` -> `DD/MM/YYYY`. Devuelve el valor crudo si no calza. */
+export const fmtFecha = (valor: string | null | undefined) => {
+  const partes = soloFecha(valor).split("-");
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : String(valor ?? "");
+};
