@@ -125,10 +125,21 @@ export type UploadResponse = {
   filasErrores: number;
   errores: UploadRowError[];
   estado: string;
+  /** Detalle de filas omitidas (puede venir corto; ver omitidasTruncadas). */
+  omitidas?: UploadFilaOmitida[];
+  /** true cuando `omitidas` no incluye todas las filas omitidas. */
+  omitidasTruncadas?: boolean;
 };
 export type UploadRowError = {
   fila: number;
   motivo: string;
+};
+/** Una fila omitida junto a la fila ya registrada que ocasionó la omisión. */
+export type UploadFilaOmitida = {
+  fila: number;
+  motivo: string;
+  nueva: VentaRow;
+  existente: VentaRow | null;
 };
 export type UploadHistorial = {
   id: number;

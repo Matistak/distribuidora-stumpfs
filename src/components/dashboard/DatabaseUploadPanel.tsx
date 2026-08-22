@@ -105,6 +105,8 @@ export function DatabaseUploadPanel({
         filasErrores: carga.filasErrores,
         sinErrores: !tieneError,
         errores,
+        omitidas: Array.isArray(carga.omitidas) ? carga.omitidas : [],
+        ...(carga.omitidasTruncadas ? { omitidasTruncadas: true } : {}),
         duracionSegundos: duracionSegundos(),
         ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         ...(carga.truncado

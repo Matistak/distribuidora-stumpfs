@@ -46,6 +46,8 @@ export function UploadPanel({
           filasErrores: carga.filasErrores,
           sinErrores: !tieneError,
           errores,
+          omitidas: Array.isArray(carga.omitidas) ? carga.omitidas : [],
+          ...(carga.omitidasTruncadas ? { omitidasTruncadas: true } : {}),
           ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         });
         if (tieneError) {
