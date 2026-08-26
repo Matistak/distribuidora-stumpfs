@@ -42,12 +42,12 @@ export function UploadPanel({
         setResumen({
           correcta: !tieneError,
           filasNuevas: carga.filasNuevas,
-          filasOmitidas: carga.filasOmitidas,
+          filasReemplazadas: carga.filasReemplazadas ?? 0,
+          ...(carga.rango ? { rango: carga.rango } : {}),
           filasErrores: carga.filasErrores,
           sinErrores: !tieneError,
           errores,
-          omitidas: Array.isArray(carga.omitidas) ? carga.omitidas : [],
-          ...(carga.omitidasTruncadas ? { omitidasTruncadas: true } : {}),
+          ...(carga.erroresTruncados ? { erroresTruncados: true } : {}),
           ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         });
         if (tieneError) {
@@ -66,7 +66,7 @@ export function UploadPanel({
       setResumen({
         correcta: true,
         filasNuevas: rows.length,
-        filasOmitidas: 0,
+        filasReemplazadas: 0,
         filasErrores: 0,
         sinErrores: true,
         errores: [],
@@ -80,7 +80,7 @@ export function UploadPanel({
       setResumen({
         correcta: false,
         filasNuevas: 0,
-        filasOmitidas: 0,
+        filasReemplazadas: 0,
         filasErrores: 0,
         sinErrores: false,
         errores: [],

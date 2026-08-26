@@ -101,12 +101,12 @@ export function DatabaseUploadPanel({
       setResumen({
         correcta: !tieneError,
         filasNuevas: carga.filasNuevas,
-        filasOmitidas: carga.filasOmitidas,
+        filasReemplazadas: carga.filasReemplazadas ?? 0,
+        ...(carga.rango ? { rango: carga.rango } : {}),
         filasErrores: carga.filasErrores,
         sinErrores: !tieneError,
         errores,
-        omitidas: Array.isArray(carga.omitidas) ? carga.omitidas : [],
-        ...(carga.omitidasTruncadas ? { omitidasTruncadas: true } : {}),
+        ...(carga.erroresTruncados ? { erroresTruncados: true } : {}),
         duracionSegundos: duracionSegundos(),
         ...(tieneError ? { detalleError: `Estado recibido: ${carga.estado}` } : {}),
         ...(carga.truncado
@@ -133,7 +133,7 @@ export function DatabaseUploadPanel({
       setResumen({
         correcta: false,
         filasNuevas: 0,
-        filasOmitidas: 0,
+        filasReemplazadas: 0,
         filasErrores: 0,
         sinErrores: false,
         errores: [],

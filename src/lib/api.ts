@@ -121,32 +121,28 @@ export type UploadResponse = {
   archivo: string;
   filasTotales: number;
   filasNuevas: number;
-  filasOmitidas: number;
+  /** Filas que existían en el rango recargado y fueron reemplazadas. */
+  filasReemplazadas: number;
+  /** Total de filas con error, aunque `errores` venga cortado. */
   filasErrores: number;
+  /** Detalle de las filas con error; puede venir corto (ver erroresTruncados). */
   errores: UploadRowError[];
+  /** true cuando `errores` no incluye todas las filas con error. */
+  erroresTruncados?: boolean;
   estado: string;
-  /** Detalle de filas omitidas (puede venir corto; ver omitidasTruncadas). */
-  omitidas?: UploadFilaOmitida[];
-  /** true cuando `omitidas` no incluye todas las filas omitidas. */
-  omitidasTruncadas?: boolean;
+  /** Rango de fechas reemplazado por la carga (`hasta` exclusivo). */
+  rango?: { desde: string; hasta: string };
 };
 export type UploadRowError = {
   fila: number;
   motivo: string;
-};
-/** Una fila omitida junto a la fila ya registrada que ocasionó la omisión. */
-export type UploadFilaOmitida = {
-  fila: number;
-  motivo: string;
-  nueva: VentaRow;
-  existente: VentaRow | null;
 };
 export type UploadHistorial = {
   id: number;
   archivo: string;
   filasTotales: number;
   filasNuevas: number;
-  filasOmitidas: number;
+  filasReemplazadas: number;
   filasErrores: number;
   creadoEn: string;
   estado: string;
