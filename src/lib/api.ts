@@ -140,6 +140,8 @@ export type UploadFilaOmitida = {
   motivo: string;
   nueva: VentaRow;
   existente: VentaRow | null;
+  /** Nro de fila de `existente` si vino en el mismo archivo; null si es de una carga previa. */
+  filaExistente: number | null;
 };
 export type UploadHistorial = {
   id: number;

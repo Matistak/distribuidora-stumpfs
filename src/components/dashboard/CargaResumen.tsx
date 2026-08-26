@@ -275,7 +275,13 @@ function ParOmitido({ omision }: { omision: UploadFilaOmitida }) {
     <div className="overflow-hidden rounded-lg border border-border">
       <p className="border-b border-border bg-muted/40 px-3 py-1.5 text-[11px]">
         <span className="font-semibold">Fila {omision.fila}</span>
-        <span className="text-muted-foreground"> · {omision.motivo}</span>
+        <span className="text-muted-foreground">
+          {omision.filaExistente === null
+            ? ""
+            : ` (idéntica a la fila ${omision.filaExistente})`}
+          {" · "}
+          {omision.motivo}
+        </span>
       </p>
       <div className="table-scroll">
         <Table className="min-w-max text-xs">
@@ -300,7 +306,9 @@ function ParOmitido({ omision }: { omision: UploadFilaOmitida }) {
               <TableCell className="sticky left-0 z-10 bg-background py-2 align-middle">
                 <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-warning-foreground">
                   <span className="size-1.5 shrink-0 rounded-full bg-warning" />
-                  Ocasionó la omisión
+                  {omision.filaExistente === null
+                    ? "Ocasionó la omisión (carga previa)"
+                    : `Ocasionó la omisión · Fila ${omision.filaExistente}`}
                 </span>
               </TableCell>
               {omision.existente ? (
@@ -319,7 +327,7 @@ function ParOmitido({ omision }: { omision: UploadFilaOmitida }) {
               <TableCell className="sticky left-0 z-10 bg-background py-2 align-middle">
                 <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
                   <span className="size-1.5 shrink-0 rounded-full bg-destructive" />
-                  Fila omitida
+                  Fila omitida · Fila {omision.fila}
                 </span>
               </TableCell>
               {COLUMNAS_VENTA.map(({ clave }) => (
