@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { mensajeError } from "@/lib/api";
 import { listarComprobantesLocal } from "@/lib/comprobantes";
 import { comprobantesQueryOptions } from "@/lib/queries";
-import { fmtGs, fmtNum } from "@/lib/metrics";
+import { fmtGs, fmtNum, soloFecha } from "@/lib/metrics";
 import type { ComprobanteResumen, Filtros, VentaRow } from "@/lib/types";
 
 const PAGE_SIZE = 10;
@@ -35,7 +35,7 @@ const columnas: DataTableColumn<ComprobanteResumen>[] = [
     header: "Fecha",
     width: "w-[110px]",
     className: "whitespace-nowrap",
-    cell: (row) => row.fecha,
+    cell: (row) => soloFecha(row.fecha),
   },
   {
     id: "cliente",

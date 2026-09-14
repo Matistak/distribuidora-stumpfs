@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { aplicarFiltros, fmtGs, fmtNum } from "@/lib/metrics";
+import { aplicarFiltros, fmtGs, fmtNum, soloFecha } from "@/lib/metrics";
 import { mensajeError } from "@/lib/api";
 import { ventasQueryOptions } from "@/lib/queries";
 import type { Filtros, VentaRow } from "@/lib/types";
@@ -78,7 +78,7 @@ const columnas: DataTableColumn<VentaRow>[] = [
     header: "Fecha",
     width: "w-[110px]",
     className: "whitespace-nowrap",
-    cell: (row) => row.fecha,
+    cell: (row) => soloFecha(row.fecha),
   },
 ];
 

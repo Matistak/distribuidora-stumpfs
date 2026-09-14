@@ -94,8 +94,9 @@ permanecer allí y debe incluir backups y restauración.
   "id": 1,
   "archivo": "ventas-2026-01.xlsx",
   "filasTotales": 25000,
-  "filasNuevas": 24980,
-  "filasOmitidas": 20,
+  "filasNuevas": 25000,
+  "filasReemplazadas": 24980,
+  "rango": { "desde": "2026-01-01T00:00:00.000Z", "hasta": "2026-02-01T00:00:00.000Z" },
   "estado": "procesado"
 }
 ```
@@ -109,14 +110,15 @@ mantenerse alineados con los tipos del backend en
 - Cada fila del Excel representa una línea de comprobante.
 - La importación debe ejecutarse dentro de una transacción.
 - Las filas deben insertarse en lotes para no mantener una operación por fila.
-- Reprocesar el mismo Excel no debe duplicar ventas.
-- La clave única actual es (`nroDoc`, `codProducto`, `nroComprobante`). Debe
-  validarse con los datos reales para confirmar que no faltan compañía,
-  distribuidora o tipo de documento.
+- Cada carga reemplaza un rango de fechas: se borran las ventas cuya `fecha`
+  cae dentro del rango y se insertan todas las filas del origen, sin descartar
+  ninguna (ni siquiera las idénticas entre sí). Reprocesar el mismo Excel deja
+  exactamente las filas del Excel para ese período.
+- El rango sale de las propias filas en el Excel (del primer al último día con
+  datos) y del rango de meses elegido por el usuario en la carga desde la base
+  externa.
 - `nroComprobante` se almacena como `BigInt` porque los comprobantes pueden
   superar el rango de un `Int` de Prisma. La API lo serializa como `number`.
-- La deduplicación no debe cargar todas las claves de la tabla en memoria antes
-  de cada importación.
 - Los importes monetarios no deberían depender de `Float`; conviene utilizar
   enteros en guaraníes o una representación decimal controlada.
 

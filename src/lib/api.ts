@@ -24,6 +24,8 @@ import type {
  *  POST   /api/uploads                -> multipart/form-data { file } : sube y procesa el Excel
  *  GET    /api/uploads                -> historial de cargas
  *  GET    /api/uploads/:id            -> estado de un procesamiento
+ *  GET    /api/uploads/origen        -> si la base de datos externa está configurada
+ *  POST   /api/uploads/base          -> importa desde la base externa { desde, hasta }
  *  GET    /api/dashboard              -> KPIs + series + rankings (query: desde, hasta, cliente, vendedor, canal, ciudad, zona)
  *  GET    /api/dashboard/alertas/:clave -> filas que explican una alerta (mismos filtros)
  *  GET    /api/dashboard/alertas      -> alertas de caída/crecimiento (query: cliente, vendedor, canal, ciudad, zona)
@@ -119,10 +121,17 @@ export type UploadResponse = {
   archivo: string;
   filasTotales: number;
   filasNuevas: number;
-  filasOmitidas: number;
+  /** Filas que existían en el rango recargado y fueron reemplazadas. */
+  filasReemplazadas: number;
+  /** Total de filas con error, aunque `errores` venga cortado. */
   filasErrores: number;
+  /** Detalle de las filas con error; puede venir corto (ver erroresTruncados). */
   errores: UploadRowError[];
+  /** true cuando `errores` no incluye todas las filas con error. */
+  erroresTruncados?: boolean;
   estado: string;
+  /** Rango de fechas reemplazado por la carga (`hasta` exclusivo). */
+  rango?: { desde: string; hasta: string };
 };
 export type UploadRowError = {
   fila: number;
@@ -133,7 +142,7 @@ export type UploadHistorial = {
   archivo: string;
   filasTotales: number;
   filasNuevas: number;
-  filasOmitidas: number;
+  filasReemplazadas: number;
   filasErrores: number;
   creadoEn: string;
   estado: string;
@@ -159,6 +168,24 @@ export function subirExcel(file: File, onProgress?: (pct: number) => void) {
     xhr.send(form);
   });
 }
+
+export type OrigenBase = {
+  configurado: boolean;
+  tabla?: string;
+};
+
+export type CargaBaseResponse = UploadResponse & { truncado?: boolean };
+
+/** GET /api/uploads/origen — si el origen externo está configurado (no consulta la vista) */
+export const obtenerOrigenBase = () => request<OrigenBase>("/api/uploads/origen");
+
+/** POST /api/uploads/base — importa desde la base externa por rango de fechas */
+/** POST /api/uploads/base — `desde`/`hasta` en formato YYYY-MM (mes inclusive). */
+export const cargarDesdeBase = (desde: string, hasta: string) =>
+  request<CargaBaseResponse>("/api/uploads/base", {
+    method: "POST",
+    body: JSON.stringify({ desde, hasta }),
+  });
 
 /** GET /api/uploads */
 export const listarCargas = () => request<UploadHistorial[]>("/api/uploads");
